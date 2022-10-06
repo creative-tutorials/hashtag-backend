@@ -30,23 +30,21 @@ const PORT = process.env.PORT || 6342;
 const userdb = [];
 
 /**
- * A simple endpoint that returns a message if the API key is valid.
- * @param {Request} req - The request object.
- * @param {Response} res - The response object.
- * @returns None
+ * A constant variable that is storing the API key.
+ * @returns {string} The API key for the server.
  */
+const key = process.env.SERVER_API_KEY;
 app.get("/", (req, res) => {
-  res.set("Content-Type", "application/json");
-  const key = process.env.SERVER_API_KEY;
+  res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   if (apikey === key)
     res.status(200).send({ message: "hello from simple server :)" });
   else res.status(401).send({ error: "API KEY is invalid or required!" });
 });
 
-// Handle User Login Request
-
+// Handle User Signup Request
 app.post("/signup", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
   let { id, email, password, age, dob, username, bio, post, comments } =
     req.body;
   const findemail = userdb.find(
@@ -100,26 +98,37 @@ app.post("/signup", (req, res) => {
 });
 
 app.get("/userdb", (req, res) => {
-  res.set("Content-Type", "application/json");
+  res.setHeader("Content-Type", "application/json");
   const key = process.env.SERVER_API_KEY;
   const apikey = req.headers.apikey;
   if (apikey === key) return res.send(userdb);
 });
 
 app.post("/login", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  const apikey = req.headers.apikey;
   const findemail = userdb.find(
     (findemail) =>
       findemail.email === req.body.email &&
       findemail.password === req.body.password
   );
-  if (findemail) {
-    res.send({ message: "Login successful" });
+  function CheckDatabase() {
+    if (findemail) {
+      res.send({ message: "Login successful" });
+    } else {
+      res.status(403).send({ error: "Invalid Credentials X﹏X" });
+    }
+  }
+  if (apikey === key) {
+    CheckDatabase();
   } else {
-    res.status(403).send({ error: "Invalid Credentials X﹏X" });
+    res.status(401).send({ error: "API KEY is invalid or required!" });
   }
 });
 
 app.put("/edit_profile", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  const apikey = req.headers.apikey;
   const findemail = userdb.find(
     (findemail) =>
       findemail.email === req.body.email &&
@@ -134,27 +143,34 @@ app.put("/edit_profile", (req, res) => {
    * @param
    */
   try {
-    if (findemail) {
-      function CheckBioLength() {
-        const bios = req.body.bio;
+    function RunFindMailIfCheck() {
+      if (findemail) {
+        function CheckBioLength() {
+          const bios = req.body.bio;
 
-        if (bios.length > 100) {
-          res.status(200).send({
-            error: "You must have at least " + 90 + " bio characters",
-          });
-        } else {
-          findemail.username = req.body.username;
-          findemail.bio = req.body.bio;
-          findemail.dob = req.body.dob;
-          res
-            .status(200)
-            .send({ message: "Profile has been updated successfully :)" });
+          if (bios.length > 100) {
+            res.status(200).send({
+              error: "You must have at least " + 90 + " bio characters",
+            });
+          } else {
+            findemail.username = req.body.username;
+            findemail.bio = req.body.bio;
+            findemail.dob = req.body.dob;
+            res
+              .status(200)
+              .send({ message: "Profile has been updated successfully :)" });
+          }
         }
+        CheckBioLength();
       }
-      CheckBioLength();
+      if (!findemail) {
+        res.status(403).send({ error: "Error editting profile ＞︿＜" });
+      }
     }
-    if (!findemail) {
-      res.status(403).send({ error: "Error editting profile ＞︿＜" });
+    if (apikey === key) {
+      RunFindMailIfCheck();
+    } else {
+      res.status(401).send({ error: "API KEY is invalid or required!" });
     }
   } catch (error) {
     res.status(500).send({ error: "Internal Server Error ＞︿＜" });
@@ -163,37 +179,55 @@ app.put("/edit_profile", (req, res) => {
 
 const posts = [];
 app.post("/make_post", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  const apikey = req.headers.apikey;
   const findemail = userdb.find(
     (findemail) =>
       findemail.email === req.body.email &&
       findemail.password === req.body.password
   );
-  if (findemail) {
-    findemail.post = posts;
-    posts.push(req.body.post);
-    res.status(200).send({ message: "Post was successfully created." });
+  function RunFindMailIfCheck() {
+    if (findemail) {
+      findemail.post = posts;
+      posts.push(req.body.post);
+      res.status(200).send({ message: "Post was successfully created." });
+    } else {
+      res.status(404).send({
+        error: "Error: 90B: This error was caused by some invalid credentials",
+      });
+    }
+  }
+  if (apikey === key) {
+    RunFindMailIfCheck();
   } else {
-    res
-      .status(404)
-      .send({ error: "The error was caused by some invalid credentials" });
+    res.status(401).send({ error: "API KEY is invalid or required!" });
   }
 });
 
 const comments = [];
 app.post("/comment", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  const apikey = req.headers.apikey;
   const { comment } = req.body;
   const finduser = userdb.find(
     (finduser) => finduser.username === req.body.username
   );
   try {
-    if (finduser) {
-      finduser.comments = comments;
-      comments.push(req.body.comment);
-      res.send({ message: "Comment was successfully created." });
+    function RunFindUserIfCheck() {
+      if (finduser) {
+        finduser.comments = comments;
+        comments.push(req.body.comment);
+        res.send({ message: "Comment was successfully created." });
+      } else {
+        res.status(404).send({
+          error: "Error: 90B: The error was caused by some invalid credentials",
+        });
+      }
+    }
+    if (apikey === key) {
+      RunFindUserIfCheck();
     } else {
-      res
-        .status(404)
-        .send({ error: "The error was caused by some invalid credentials" });
+      res.status(401).send({ error: "API KEY is invalid or required!" });
     }
   } catch {
     res.status(500).send({ error: "Internal Server Error" });
@@ -202,27 +236,47 @@ app.post("/comment", (req, res) => {
 
 const uploads = [];
 app.post("/upload", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  const apikey = req.headers.apikey;
   const { upload } = req.body;
   const findemail = userdb.find(
     (findemail) => findemail.email === req.body.email
   );
   const ReadFile = () => {
-    if (findemail) {
-      try {
-        res.send(req.body);
-        uploads.push(req.body.files);
-      } catch (error) {
-        res.status(400).send({ error: "Invalid upload url" });
+    function RunFindMailIfCheck() {
+      if (findemail) {
+        try {
+          res.send(req.body);
+          uploads.push(req.body.files);
+        } catch (error) {
+          res.status(400).send({
+            error:
+              "Couldn't upload file, Try Again, or follow our upload guidelines",
+          });
+        }
+      } else {
+        res.status(404).send({
+          error: "Error: 90B: The error was caused by some invalid credentials",
+        });
       }
+    }
+    if (apikey === key) {
+      RunFindMailIfCheck();
     } else {
-      res.status(404).send({ error: "You're not signed up" });
+      res.status(401).send({ error: "API KEY is invalid or required!" });
     }
   };
   ReadFile();
 });
 
 app.get("/upload", (req, res) => {
-  res.send(uploads);
+  res.setHeader("Content-Type", "application/json");
+  const apikey = req.headers.apikey;
+  if (apikey === key) {
+    res.send(uploads);
+  } else {
+    res.status(401).send({ error: "API KEY is invalid or required!" });
+  }
 });
 
 app
