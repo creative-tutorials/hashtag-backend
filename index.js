@@ -39,61 +39,67 @@ app.get("/", (req, res) => {
   const apikey = req.headers.apikey;
   if (apikey === key)
     res.status(200).send({ message: "hello from simple server :)" });
-  else res.status(401).send({ error: "API KEY is invalid or required!" });
+  else res.status(400).send({ error: "API KEY is invalid or required!" });
 });
 
 // Handle User Signup Request
 app.post("/signup", (req, res) => {
   res.setHeader("Content-Type", "application/json");
+  const apikey = req.headers.apikey;
   let { id, email, password, age, dob, username, bio, post, comments } =
     req.body;
   const findemail = userdb.find(
     (findemail) => findemail.email === req.body.email
   );
 
-  const FinishCheck = () => {
-    function check() {
-      if (password.length > 8) {
-        console.log("Password is strong");
-        const length = 32;
-        let result = "";
-        let characters =
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        let charactersLength = characters.length;
-        for (let i = 0; i < length; i++) {
-          result += characters.charAt(
-            Math.floor(Math.random() * charactersLength)
-          );
+  if (apikey === key) {
+    const ContinueSignupProcess = () => {
+      console.log(req.body)
+      function CheckForPasswordLenght() {
+        if (password.length > 10) {
+          console.log("Password is strong");
+          const length = 32;
+          let result = "";
+          let characters =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+          let charactersLength = characters.length;
+          for (let i = 0; i < length; i++) {
+            result += characters.charAt(
+              Math.floor(Math.random() * charactersLength)
+            );
+          }
+          req.body.id = result;
+          req.body.username = "Bot";
+          req.body.bio = "Bot Bio";
+          req.body.post = "A bot posting";
+          req.body.dob = "01/01/2000";
+          req.body.comments = "Imagine a bot posting";
+          res.status(200).send(req.body);
+          userdb.push(req.body);
+        } else {
+          console.log("Password is not strong");
+          res.status(400).send({ error: "Couldn't complete your request because your password is weak" });
         }
-        req.body.id = result;
-        req.body.username = "Bot";
-        req.body.bio = "Bot Bio";
-        req.body.post = "A bot posting";
-        req.body.dob = "01/01/2000";
-        req.body.comments = "Imagine a bot posting";
-        res.status(200).send(req.body);
-        userdb.push(req.body);
-      } else {
-        console.log("Password is not strong");
-        res.status(401).send({ error: "Password is not good enough" });
       }
-    }
 
-    if (age < 18) {
-      res.status(403).send({
-        error: "You must be at least 18 years old to be signed up.",
+      if (age < 18) {
+        res.status(401).send({
+          error: "You must be at least 18 years old to be signed up.",
+        });
+      } else {
+        CheckForPasswordLenght();
+      }
+    };
+
+    if (findemail) {
+      res.status(409).send({
+        error: "You already have an account with that email address",
       });
     } else {
-      check();
+      ContinueSignupProcess();
     }
-  };
-
-  if (findemail) {
-    res.send({
-      error: "You already have an account with that email address",
-    });
   } else {
-    FinishCheck();
+    res.status(400).send({ error: "API key is invalid or required" });
   }
 });
 
@@ -101,7 +107,11 @@ app.get("/userdb", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const key = process.env.SERVER_API_KEY;
   const apikey = req.headers.apikey;
-  if (apikey === key) return res.send(userdb);
+  if (apikey === key) {
+    res.send(userdb);
+  } else {
+    res.status(400).send({ error: "API KEY is invalid or required!" });
+  }
 });
 
 app.post("/login", (req, res) => {
@@ -116,13 +126,16 @@ app.post("/login", (req, res) => {
     if (findemail) {
       res.send({ message: "Login successful" });
     } else {
-      res.status(403).send({ error: "Invalid Credentials X﹏X" });
+      res.status(403).send({
+        error:
+          "Your account is not authorized to access the requested resource.",
+      });
     }
   }
   if (apikey === key) {
     CheckDatabase();
   } else {
-    res.status(401).send({ error: "API KEY is invalid or required!" });
+    res.status(400).send({ error: "API KEY is invalid or required!" });
   }
 });
 
@@ -170,7 +183,7 @@ app.put("/edit_profile", (req, res) => {
     if (apikey === key) {
       RunFindMailIfCheck();
     } else {
-      res.status(401).send({ error: "API KEY is invalid or required!" });
+      res.status(400).send({ error: "API KEY is invalid or required!" });
     }
   } catch (error) {
     res.status(500).send({ error: "Internal Server Error ＞︿＜" });
@@ -192,15 +205,16 @@ app.post("/make_post", (req, res) => {
       posts.push(req.body.post);
       res.status(200).send({ message: "Post was successfully created." });
     } else {
-      res.status(404).send({
-        error: "Error: 90B: This error was caused by some invalid credentials",
+      res.status(401).send({
+        error:
+          "You are unauthorized to make changes to your profile, please login/signup",
       });
     }
   }
   if (apikey === key) {
     RunFindMailIfCheck();
   } else {
-    res.status(401).send({ error: "API KEY is invalid or required!" });
+    res.status(400).send({ error: "API KEY is invalid or required!" });
   }
 });
 
@@ -219,15 +233,15 @@ app.post("/comment", (req, res) => {
         comments.push(req.body.comment);
         res.send({ message: "Comment was successfully created." });
       } else {
-        res.status(404).send({
-          error: "Error: 90B: The error was caused by some invalid credentials",
+        res.status(401).send({
+          error: "You are unauthorized to comment on this post",
         });
       }
     }
     if (apikey === key) {
       RunFindUserIfCheck();
     } else {
-      res.status(401).send({ error: "API KEY is invalid or required!" });
+      res.status(400).send({ error: "API KEY is invalid or required!" });
     }
   } catch {
     res.status(500).send({ error: "Internal Server Error" });
@@ -249,21 +263,22 @@ app.post("/upload", (req, res) => {
           res.send(req.body);
           uploads.push(req.body.files);
         } catch (error) {
-          res.status(400).send({
+          res.status(412).send({
             error:
               "Couldn't upload file, Try Again, or follow our upload guidelines",
           });
         }
       } else {
-        res.status(404).send({
-          error: "Error: 90B: The error was caused by some invalid credentials",
+        res.status(401).send({
+          error:
+            "You are unauthorized to upload a file, please login/signup to continue",
         });
       }
     }
     if (apikey === key) {
       RunFindMailIfCheck();
     } else {
-      res.status(401).send({ error: "API KEY is invalid or required!" });
+      res.status(400).send({ error: "API KEY is invalid or required!" });
     }
   };
   ReadFile();
