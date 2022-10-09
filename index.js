@@ -54,7 +54,6 @@ app.post("/signup", (req, res) => {
 
   if (apikey === key) {
     const ContinueSignupProcess = () => {
-      console.log(req.body)
       function CheckForPasswordLenght() {
         if (password.length > 10) {
           console.log("Password is strong");
@@ -84,7 +83,7 @@ app.post("/signup", (req, res) => {
 
       if (age < 18) {
         res.status(401).send({
-          error: "You must be at least 18 years old to be signed up.",
+          error: "You must be at least 18 years old or older to sign up.",
         });
       } else {
         CheckForPasswordLenght();
@@ -207,7 +206,7 @@ app.post("/make_post", (req, res) => {
     } else {
       res.status(401).send({
         error:
-          "You are unauthorized to make changes to your profile, please login/signup",
+          "You are unauthorized to make a post, please login/signup",
       });
     }
   }
