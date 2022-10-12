@@ -1,10 +1,15 @@
 let colors = require("colors");
 let express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+var readimage = require("readimage");
+const { LocalStorage } = require("node-localstorage");
+const { Blob, resolveObjectURL } = require("buffer");
 let app = express();
 let cors = require("cors");
 require("dotenv").config({ path: __dirname + "/.env.local" });
 let allowedOrigins = [`${process.env.SERVER1}`, `${process.env.SERVER2}`];
-
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -28,18 +33,22 @@ app.use(express.urlencoded({ extended: true }));
 const PORT = process.env.PORT || 6342;
 
 const userdb = [];
+let currentYear = new Date().getFullYear();
 
 /**
  * A constant variable that is storing the API key.
  * @returns {string} The API key for the server.
  */
+app.use("/static", express.static(path.join(__dirname, "public")));
 const key = process.env.SERVER_API_KEY;
-app.get("/", (req, res) => {
+app.get(`/`, (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  if (apikey === key)
-    res.status(200).send({ message: "hello from simple server :)" });
-  else res.status(400).send({ error: "API KEY is invalid or required!" });
+  if (apikey === key) {
+    res.status(200).send("Hello");
+  } else {
+    res.status(400).send({ error: "API KEY is invalid or required!" });
+  }
 });
 
 // Handle User Signup Request
@@ -54,7 +63,7 @@ app.post("/signup", (req, res) => {
 
   if (apikey === key) {
     const ContinueSignupProcess = () => {
-      function CheckForPasswordLenght() {
+      async function CheckForPasswordLenght() {
         if (password.length > 10) {
           console.log("Password is strong");
           const length = 32;
@@ -77,7 +86,10 @@ app.post("/signup", (req, res) => {
           userdb.push(req.body);
         } else {
           console.log("Password is not strong");
-          res.status(400).send({ error: "Couldn't complete your request because your password is weak" });
+          res.status(400).send({
+            error:
+              "Couldn't complete your request because your password is weak",
+          });
         }
       }
 
@@ -108,6 +120,7 @@ app.get("/userdb", (req, res) => {
   const apikey = req.headers.apikey;
   if (apikey === key) {
     res.send(userdb);
+    const lastElementOfTheUserArray = userdb[userdb.length - 1];
   } else {
     res.status(400).send({ error: "API KEY is invalid or required!" });
   }
@@ -205,8 +218,7 @@ app.post("/make_post", (req, res) => {
       res.status(200).send({ message: "Post was successfully created." });
     } else {
       res.status(401).send({
-        error:
-          "You are unauthorized to make a post, please login/signup",
+        error: "You are unauthorized to make a post, please login/signup",
       });
     }
   }
@@ -247,47 +259,77 @@ app.post("/comment", (req, res) => {
   }
 });
 
-const uploads = [];
 app.post("/upload", (req, res) => {
-  res.setHeader("Content-Type", "application/json");
+  const filetype = req.body.files.fileType;
+  console.log(filetype);
   const apikey = req.headers.apikey;
-  const { upload } = req.body;
+  const { files } = req.body;
   const findemail = userdb.find(
     (findemail) => findemail.email === req.body.email
   );
-  const ReadFile = () => {
-    function RunFindMailIfCheck() {
-      if (findemail) {
-        try {
-          res.send(req.body);
-          uploads.push(req.body.files);
-        } catch (error) {
-          res.status(412).send({
-            error:
-              "Couldn't upload file, Try Again, or follow our upload guidelines",
-          });
-        }
-      } else {
-        res.status(401).send({
-          error:
-            "You are unauthorized to upload a file, please login/signup to continue",
-        });
-      }
-    }
-    if (apikey === key) {
-      RunFindMailIfCheck();
+  /**
+   * The RunFindMailIfCheck function is used to check if the user has logged in or not.
+   * If they have, it will allow them to upload a file.
+   * If they haven't, it will send an error message back saying that they are unauthorized and need to login/signup first.
+   * @return A message if the user is authorized to upload a file 😉
+   *
+   * @docauthor 👀
+   */
+
+  const CheckForFileSize = () => {
+    const fileSizeLimit2 = 1000000;
+    const fileSize2 = req.body.files.fileSize;
+    if (fileSize2 > fileSizeLimit2) {
+      res.send({ error: "File size limit exceeded" });
     } else {
-      res.status(400).send({ error: "API KEY is invalid or required!" });
+      console.log("Your File has been Uploaded Succesfully");
+      res.send({ message: "Your File has been Uploaded Succesfully" });
+      userdb.push(req.body.files);
     }
   };
-  ReadFile();
+  const UserHasRegisterd = () => {
+    try {
+      if (
+        filetype === "image/jpeg" ||
+        filetype === "image/png" ||
+        filetype === "image/gif" ||
+        filetype === "image/jfif" ||
+        filetype === "image/jpg" ||
+        filetype === "video/mp4"
+      ) {
+        CheckForFileSize();
+      } else {
+        console.log("Failed to upload file: ");
+        res.send({ message: "Failed to upload file"});
+      }
+    } catch (error) {
+      res.status(412).send({
+        error,
+      });
+    }
+  };
+  async function CheckIfUserIsRegistered() {
+    if (findemail) {
+      UserHasRegisterd();
+    } else {
+      res.status(401).send({
+        error:
+          "You are unauthorized to upload a file, please login/signup to continue",
+      });
+    }
+  }
+  if (apikey === key) {
+    CheckIfUserIsRegistered();
+  } else {
+    res.status(400).send({ error: "API KEY is invalid or required!" });
+  }
 });
 
 app.get("/upload", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   if (apikey === key) {
-    res.send(uploads);
+    res.send(userdb.files);
   } else {
     res.status(401).send({ error: "API KEY is invalid or required!" });
   }
