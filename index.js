@@ -1,11 +1,8 @@
 let colors = require("colors");
 let express = require("express");
-const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
-var readimage = require("readimage");
+const { readFile } = require("node:fs/promises");
 const { LocalStorage } = require("node-localstorage");
-const { Blob, resolveObjectURL } = require("buffer");
 let app = express();
 let cors = require("cors");
 require("dotenv").config({ path: __dirname + "/.env.local" });
@@ -189,7 +186,10 @@ app.put("/edit_profile", (req, res) => {
         CheckBioLength();
       }
       if (!findemail) {
-        res.status(403).send({ error: "Error editting profile ＞︿＜" });
+        res.status(403).send({
+          error:
+            "We had issues editing your profile because of some invalid credentials",
+        });
       }
     }
     if (apikey === key) {
@@ -202,19 +202,58 @@ app.put("/edit_profile", (req, res) => {
   }
 });
 
-const posts = [];
+const posts = [
+  {
+    username: "Timi",
+    post: "Hello World",
+    status: "posting",
+    created: "June 14 2016",
+  },
+];
+const getCurrentMonth = new Date();
+const getCurrentDate = new Date();
+const getFullYear = new Date();
+const months = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+/** Getting the current month and assigning it to the variable currentMonth. 
+ * The currentMonth variable will be returned to as MonthOfTheDay - But displayed as Strings e.g. "January" or "February"
+ * @return {String} - The current month
+ * @return {number} - The current date
+ * @return {number} - The current year
+ * @example - This was used for testing purposes only
+ * @uses - The date will be stored on user's post - The last date,month,and year user made a post[This is what is used for]
+*/
+const currentMonth = months[getCurrentMonth.getMonth()];
+const fetchingCurrentDate = getCurrentDate.getDate();
+const fetchCurrentYear = getFullYear.getFullYear();
+const combineDateToReasonableData = currentMonth + ' ' + fetchingCurrentDate + ' ' + fetchCurrentYear;
 app.post("/make_post", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  const findemail = userdb.find(
-    (findemail) =>
-      findemail.email === req.body.email &&
-      findemail.password === req.body.password
+  const identifyuserAuthStatus = userdb.find(
+    (identifyuserAuthStatus) =>
+      identifyuserAuthStatus.email === req.body.email &&
+      identifyuserAuthStatus.password === req.body.password &&
+      identifyuserAuthStatus.username === req.body.username
   );
   function RunFindMailIfCheck() {
-    if (findemail) {
-      findemail.post = posts;
-      posts.push(req.body.post);
+    if (identifyuserAuthStatus) {
+      // console.log(fetchingDatePostWasMade);
+      req.body.created = combineDateToReasonableData;
+      console.log('post req', req.body.post);
+      posts.push(req.body);
       res.status(200).send({ message: "Post was successfully created." });
     } else {
       res.status(401).send({
@@ -226,6 +265,20 @@ app.post("/make_post", (req, res) => {
     RunFindMailIfCheck();
   } else {
     res.status(400).send({ error: "API KEY is invalid or required!" });
+  }
+});
+
+app.get("/post", (req, res) => {
+  if (posts === undefined || posts.length == 0) {
+    console.log("empty");
+    res.status(200).send({
+      xresponse:
+        "couldn't find any post on hastag database Try refreshing or try again",
+    });
+  } else {
+    console.log("not empty");
+    res.status(200).send(posts);
+    console.log(posts);
   }
 });
 
@@ -258,7 +311,7 @@ app.post("/comment", (req, res) => {
     res.status(500).send({ error: "Internal Server Error" });
   }
 });
-
+const uploads = [];
 app.post("/upload", (req, res) => {
   const filetype = req.body.files.fileType;
   console.log(filetype);
@@ -282,9 +335,10 @@ app.post("/upload", (req, res) => {
     if (fileSize2 > fileSizeLimit2) {
       res.send({ error: "File size limit exceeded" });
     } else {
+      req.body.files.dataURL = "";
       console.log("Your File has been Uploaded Succesfully");
       res.send({ message: "Your File has been Uploaded Succesfully" });
-      userdb.push(req.body.files);
+      uploads.push(req.body.files);
     }
   };
   const UserHasRegisterd = () => {
@@ -300,7 +354,7 @@ app.post("/upload", (req, res) => {
         CheckForFileSize();
       } else {
         console.log("Failed to upload file: ");
-        res.send({ message: "Failed to upload file"});
+        res.send({ message: "Failed to upload file" });
       }
     } catch (error) {
       res.status(412).send({
@@ -324,12 +378,33 @@ app.post("/upload", (req, res) => {
     res.status(400).send({ error: "API KEY is invalid or required!" });
   }
 });
-
-app.get("/upload", (req, res) => {
+app.get("/upload", async (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   if (apikey === key) {
-    res.send(userdb.files);
+    res.send(uploads);
+    try {
+      /* Creating a new AbortController object. */
+      const controller = new AbortController();
+      /* Destructuring the signal property from the controller object. */
+      const { signal } = controller;
+      /* Reading the file and converting it to a base64 string. */
+      const promise = readFile("upload/002.jfif", { signal });
+
+      /* Abort the request before the promise settles. */
+      // controller.abort();
+
+      /* Awaiting the promise to settle. */
+      await promise;
+      /* Converting the file  to a base64 string. */
+      const convertBufferToBase64Encoding = (await promise).toString("base64");
+      console.log(convertBufferToBase64Encoding);
+    } catch (err) {
+      /** Logging the error to the console if there's an error.
+       * @return {string}
+       */
+      console.error(err);
+    }
   } else {
     res.status(401).send({ error: "API KEY is invalid or required!" });
   }
