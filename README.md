@@ -9,7 +9,7 @@
 
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 [![GitHub Issues](https://img.shields.io/github/issues/creative-tutorials/hashtag-backend)](https://github.com/creative-tutorials/hashtag-backend/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/creative-tutorials/hashtag-backend)](https://github.com/creative-tutorials/hashtag-backend/issues)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/creative-tutorials/hashtag-backend)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
 
 </div>
