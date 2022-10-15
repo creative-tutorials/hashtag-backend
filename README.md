@@ -26,7 +26,7 @@
 - [Getting Started](#getting_started)
 - [Usage](#usage)
 - [Built Using](#built_using)
-- [Contributing](../CONTRIBUTING.md)
+- [Contributing](/blob/master/CONTRIBUTING.md)
 - [Authors](#authors)
 - [Acknowledgments](#acknowledgement)
 
@@ -36,7 +36,7 @@ Hashtag is a social media platform that provides the aim for users to connect wi
 
 ## 🏁 Getting Started <a name = "getting_started"></a>
 
-Hahstag is free and open-source to memebers of and withing the GitHub community.
+Hahstag is free and open-source to memebers of and within the GitHub community.
 
 ### Installing
 
@@ -52,7 +52,7 @@ git clone <repo url>
 
 ### Step2
 
-Next the dependencies
+Next install the dependencies
 
 ```bash
 npm install
@@ -66,12 +66,12 @@ yarn install
 
 ## 🎈 Usage <a name="usage"></a>
 
-Hashtag is currently in beta but if you want to use it in production, you can install it manually
+Hashtag is currently in beta but if you want to use it in development, you can install it manually
 
 To use **Hashtag** you can start by making a post, send something nice, and then your post should be available for others to see.
 
 ```md
-- Please not that all features will be available soon - this is just a production feature, and still on beta release
+- Please note that all features will be available soon - this is just a development feature, and still on beta release
 ```
 
 ## ⛏️ Built Using <a name = "built_using"></a>
@@ -85,11 +85,12 @@ To use **Hashtag** you can start by making a post, send something nice, and then
 ## ✍️ Authors <a name = "authors"></a>
 
 - [@Treasure](https://github.com/creative-tutorials) - Idea & Initial work
+- [@NiiVx](https://github.com/NiiVx) - An awesome Contributor
 
-See also the list of [contributors](https://github.com/kylelobo/The-Documentation-Compendium/contributors) who participated in this project.
+See also the list of [contributors](https://github.com/creative-tutorials/hashtag/contributors) who participated in this project.
 
 ## 🎉 Acknowledgements <a name = "acknowledgement"></a>
 
 <!-- - Hat tip to anyone whose code was used -->
-- Thanks to [@Twitter](twitter.com/) for the idea and inspiration
+- Thanks to [@Twitter](https://twitter.com/) for the idea and inspiration
 <!-- - References -->
