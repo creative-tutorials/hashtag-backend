@@ -8,8 +8,8 @@
 <div align="center">
 
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
-[![GitHub Issues](https://img.shields.io/github/issues/creative-tutorials/hashtag)](https://github.com/creative-tutorials/hashtag/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/creative-tutorials/hashtag)](https://github.com/creative-tutorials/hashtag/issues)
+[![GitHub Issues](https://img.shields.io/github/issues/creative-tutorials/hashtag-backend)](https://github.com/creative-tutorials/hashtag-backend/issues)
+[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/creative-tutorials/hashtag-backend)](https://github.com/creative-tutorials/hashtag-backend/issues)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
 
 </div>
