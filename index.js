@@ -1,8 +1,8 @@
+'use-strict'
+const { connectToDatabase, getDatabase } = require("./database/mongodb");
 let colors = require("colors");
 let express = require("express");
 const path = require("path");
-const { readFile } = require("node:fs/promises");
-const { LocalStorage } = require("node-localstorage");
 let app = express();
 let cors = require("cors");
 require("dotenv").config({ path: __dirname + "/.env.local" });
@@ -24,20 +24,20 @@ app.use(
   })
 );
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+/* Setting the limit of the data that can be sent to the server. */
+app.use(express.json({ limit: "200mb" }));
+app.use(express.urlencoded({ limit: "200mb", extended: true }));
 
 const PORT = process.env.PORT || 6342;
 
 const userdb = [];
 let currentYear = new Date().getFullYear();
 
-/**
- * A constant variable that is storing the API key.
- * @returns {string} The API key for the server.
- */
+let database;
+
 app.use("/static", express.static(path.join(__dirname, "public")));
 const key = process.env.SERVER_API_KEY;
+
 app.get(`/`, (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
@@ -48,12 +48,11 @@ app.get(`/`, (req, res) => {
   }
 });
 
-// Handle User Signup Request
+/* creating a new user account. */
 app.post("/signup", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  let { id, email, password, age, dob, username, bio, post, comments } =
-    req.body;
+  let { publicID, password, age, genLimit } = req.body;
   const findemail = userdb.find(
     (findemail) => findemail.email === req.body.email
   );
@@ -63,22 +62,24 @@ app.post("/signup", (req, res) => {
       async function CheckForPasswordLenght() {
         if (password.length > 10) {
           console.log("Password is strong");
-          const length = 32;
+          /* Declaring a variable named length and assigning it the value of 8. */
+          const length = 8;
           let result = "";
           let characters =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+          /** Creating a variable called charactersLength and assigning it the value of the length of
+          the characters string. 
+          *@return {number} - the characters string length
+          */
           let charactersLength = characters.length;
           for (let i = 0; i < length; i++) {
             result += characters.charAt(
               Math.floor(Math.random() * charactersLength)
             );
           }
-          req.body.id = result;
-          req.body.username = "Bot";
-          req.body.bio = "Bot Bio";
-          req.body.post = "A bot posting";
-          req.body.dob = "01/01/2000";
-          req.body.comments = "Imagine a bot posting";
+          req.body.publicID = result;
+          req.body.username = "YOUR_USERNAME";
+          req.body.genLimit = 0;
           res.status(200).send(req.body);
           userdb.push(req.body);
         } else {
@@ -123,17 +124,34 @@ app.get("/userdb", (req, res) => {
   }
 });
 
-app.post("/login", (req, res) => {
+app.route("/login").post((req, res) => {
+  login(res, req);
+});
+
+/**
+ * Trying to log user in - to have access to the app, while logging in the user, we're validating the password and email address
+ * The validation is taken place to make sure, user has an account with our software
+ * We then give user back the access to the app, if validation is complete and succesfull
+ * @param res - response object
+ * @param req - request
+ */
+const login = (res, req) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  const findemail = userdb.find(
-    (findemail) =>
-      findemail.email === req.body.email &&
-      findemail.password === req.body.password
+  const finduser = userdb.find(
+    (finduser) =>
+      finduser.email === req.body.email &&
+      finduser.password === req.body.password
   );
-  function CheckDatabase() {
-    if (findemail) {
-      res.send({ message: "Login successful" });
+
+  async function CheckDatabase() {
+    if (finduser) {
+      res.send(finduser)
+      await database.collection('users').insertOne(req.body).then((result) => {
+        console.log(result)
+      }).catch((error) => {
+        console.log(error);
+      });
     } else {
       res.status(403).send({
         error:
@@ -141,20 +159,23 @@ app.post("/login", (req, res) => {
       });
     }
   }
+
   if (apikey === key) {
     CheckDatabase();
   } else {
-    res.status(400).send({ error: "API KEY is invalid or required!" });
+    res.status(400).send({
+      error: "API KEY is invalid or required!",
+    });
   }
-});
+};
 
 app.put("/edit_profile", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  const findemail = userdb.find(
-    (findemail) =>
-      findemail.email === req.body.email &&
-      findemail.password === req.body.password
+  const finduser = userdb.find(
+    (finduser) =>
+      finduser.email === req.body.email &&
+      finduser.password === req.body.password
   );
 
   /**
@@ -166,7 +187,7 @@ app.put("/edit_profile", (req, res) => {
    */
   try {
     function RunFindMailIfCheck() {
-      if (findemail) {
+      if (finduser) {
         function CheckBioLength() {
           const bios = req.body.bio;
 
@@ -175,9 +196,9 @@ app.put("/edit_profile", (req, res) => {
               error: "You must have at least " + 90 + " bio characters",
             });
           } else {
-            findemail.username = req.body.username;
-            findemail.bio = req.body.bio;
-            findemail.dob = req.body.dob;
+            finduser.username = req.body.username;
+            finduser.bio = req.body.bio;
+            finduser.dob = req.body.dob;
             res
               .status(200)
               .send({ message: "Profile has been updated successfully :)" });
@@ -185,7 +206,7 @@ app.put("/edit_profile", (req, res) => {
         }
         CheckBioLength();
       }
-      if (!findemail) {
+      if (!finduser) {
         res.status(403).send({
           error:
             "We had issues editing your profile because of some invalid credentials",
@@ -198,15 +219,20 @@ app.put("/edit_profile", (req, res) => {
       res.status(400).send({ error: "API KEY is invalid or required!" });
     }
   } catch (error) {
-    res.status(500).send({ error: "Internal Server Error ＞︿＜" });
+    res.status(500).send({
+      error:
+        "The server encountered an unexpected condition that prevented it from fulfilling the request.",
+    });
   }
 });
 
 const posts = [
   {
-    username: "Timi",
-    post: "Hello World",
+    username: "Hashtag",
+    post: "Welcome to hashtag",
     status: "posting",
+    pfp: "",
+    image: "",
     created: "June 14 2016",
   },
 ];
@@ -227,32 +253,33 @@ const months = [
   "November",
   "December",
 ];
-/** Getting the current month and assigning it to the variable currentMonth. 
- * The currentMonth variable will be returned to as MonthOfTheDay - But displayed as Strings e.g. "January" or "February"
- * @return {String} - The current month
- * @return {number} - The current date
- * @return {number} - The current year
- * @example - This was used for testing purposes only
- * @uses - The date will be stored on user's post - The last date,month,and year user made a post[This is what is used for]
-*/
 const currentMonth = months[getCurrentMonth.getMonth()];
 const fetchingCurrentDate = getCurrentDate.getDate();
 const fetchCurrentYear = getFullYear.getFullYear();
-const combineDateToReasonableData = currentMonth + ' ' + fetchingCurrentDate + ' ' + fetchCurrentYear;
+const combineDateToReasonableData =
+  currentMonth + " " + fetchingCurrentDate + " " + fetchCurrentYear;
 app.post("/make_post", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   const identifyuserAuthStatus = userdb.find(
     (identifyuserAuthStatus) =>
       identifyuserAuthStatus.email === req.body.email &&
-      identifyuserAuthStatus.password === req.body.password &&
-      identifyuserAuthStatus.username === req.body.username
+      identifyuserAuthStatus.password === req.body.password
   );
-  function RunFindMailIfCheck() {
+  /**
+   * The function checks if the user is authenticated, if the user is authenticated, the function will
+   * create a post, if the user is not authenticated, the function will return an error message.
+   * @function -$CheckIfUserIsAuthenticated
+   * @return {status - 401} - 401, if the user is not authenticated
+   * @return {status - 200} - 200, if the user is authenticated, post user's post to the API.
+   */
+  function CheckIfUserIsAuthenticated() {
     if (identifyuserAuthStatus) {
       // console.log(fetchingDatePostWasMade);
       req.body.created = combineDateToReasonableData;
-      console.log('post req', req.body.post);
+      req.body.username = identifyuserAuthStatus.username;
+      console.log("post req", req.body.post);
+      console.log(identifyuserAuthStatus.username)
       posts.push(req.body);
       res.status(200).send({ message: "Post was successfully created." });
     } else {
@@ -262,7 +289,7 @@ app.post("/make_post", (req, res) => {
     }
   }
   if (apikey === key) {
-    RunFindMailIfCheck();
+    CheckIfUserIsAuthenticated();
   } else {
     res.status(400).send({ error: "API KEY is invalid or required!" });
   }
@@ -278,7 +305,6 @@ app.get("/post", (req, res) => {
   } else {
     console.log("not empty");
     res.status(200).send(posts);
-    console.log(posts);
   }
 });
 
@@ -308,7 +334,10 @@ app.post("/comment", (req, res) => {
       res.status(400).send({ error: "API KEY is invalid or required!" });
     }
   } catch {
-    res.status(500).send({ error: "Internal Server Error" });
+    res.status(500).send({
+      error:
+        "The server encountered an unexpected condition that prevented it from fulfilling the request.",
+    });
   }
 });
 const uploads = [];
@@ -324,24 +353,29 @@ app.post("/upload", (req, res) => {
    * The RunFindMailIfCheck function is used to check if the user has logged in or not.
    * If they have, it will allow them to upload a file.
    * If they haven't, it will send an error message back saying that they are unauthorized and need to login/signup first.
-   * @return A message if the user is authorized to upload a file 😉
+   * @return A message if the user is authorized to upload a file
    *
    * @docauthor 👀
    */
 
-  const CheckForFileSize = () => {
-    const fileSizeLimit2 = 1000000;
-    const fileSize2 = req.body.files.fileSize;
-    if (fileSize2 > fileSizeLimit2) {
-      res.send({ error: "File size limit exceeded" });
-    } else {
-      req.body.files.dataURL = "";
-      console.log("Your File has been Uploaded Succesfully");
-      res.send({ message: "Your File has been Uploaded Succesfully" });
-      uploads.push(req.body.files);
+  const CheckForFileSize = async () => {
+    const fileSizeLimit = 98103;
+    const userUploadFileSize = req.body.files.fileSize;
+    try {
+      if (userUploadFileSize > fileSizeLimit) {
+        throw new Error("File size limit exceeded");
+      } else {
+        console.log("File upload completed");
+        uploads.push(req.body.files);
+        res.send({ message: "Your File has been Uploaded Succesfully" });
+      }
+    } catch (error) {
+      res.status(413).send({ error: "Your file is too large for the server to handle" });
+      console.log("Your file is too large for the server to handle");
     }
   };
   const UserHasRegisterd = () => {
+    CheckForFileSize();
     try {
       if (
         filetype === "image/jpeg" ||
@@ -351,7 +385,7 @@ app.post("/upload", (req, res) => {
         filetype === "image/jpg" ||
         filetype === "video/mp4"
       ) {
-        CheckForFileSize();
+        console.log("file type meets the requirements");
       } else {
         console.log("Failed to upload file: ");
         res.send({ message: "Failed to upload file" });
@@ -382,38 +416,84 @@ app.get("/upload", async (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   if (apikey === key) {
-    res.send(uploads);
     try {
-      /* Creating a new AbortController object. */
-      const controller = new AbortController();
-      /* Destructuring the signal property from the controller object. */
-      const { signal } = controller;
-      /* Reading the file and converting it to a base64 string. */
-      const promise = readFile("upload/002.jfif", { signal });
-
-      /* Abort the request before the promise settles. */
-      // controller.abort();
-
-      /* Awaiting the promise to settle. */
-      await promise;
-      /* Converting the file  to a base64 string. */
-      const convertBufferToBase64Encoding = (await promise).toString("base64");
-      console.log(convertBufferToBase64Encoding);
+      res.send(uploads);
     } catch (err) {
-      /** Logging the error to the console if there's an error.
-       * @return {string}
-       */
-      console.error(err);
+      res.status(500).send({
+        error:
+          "The server encountered an unexpected condition that prevented it from fulfilling the request.",
+      });
     }
   } else {
     res.status(401).send({ error: "API KEY is invalid or required!" });
   }
 });
 
+app.route("/generateUsername").post((req, res) => {
+  UsernameGenerator(res, req);
+});
+const Maxedgeneratelimit = 2;
+function UsernameGenerator(res, req) {
+  if (!req.body.length) {
+    console.log(req.body);
+    res.status(406).send({ error: "request of length is not specified" });
+  } else {
+    Send_User_The_GeneratedUsername();
+  }
+
+  function Send_User_The_GeneratedUsername() {
+    const finduser = userdb.find(
+      (finduser) =>
+        finduser.email === req.body.email &&
+        finduser.password === req.body.password
+    );
+    if(finduser) {
+      CheckForMaxedOutLimitOnUser();
+    } else {
+      res.status(401).send({error: "You would need to login/signup first to be able to generate your unique username"})
+    }
+    async function CheckForMaxedOutLimitOnUser() {
+      if(finduser.genLimit > Maxedgeneratelimit) {
+        console.log(Maxedgeneratelimit);
+        res.status(400).send({error: "Hi There! you have reached your daily limit of 10 username generators"})
+      } else {
+        const length = req.body.length;
+        const num = 8;
+        const randomNameGenerator = (length) => {
+          let res = "";
+          for (let i = 0; i < length; i++) {
+            const random = Math.floor(Math.random() * 27);
+            res += String.fromCharCode(97 + random);
+          }
+          return res;
+        };
+        finduser.genLimit++
+        finduser.username = randomNameGenerator(length)
+        res.send({ YOUR_GENERATED_USERNAME: randomNameGenerator(length) });
+  
+      }
+
+    }
+  }
+}
+
 app
   .listen(PORT, function () {
     console.log(`Server is running on port ${PORT}`);
+    function connectionMadeToMongoDB() {
+      connectToDatabase((error) => {
+        if (!error) {
+          console.log("Connected to MongoDB atlas successfully".green);
+          database = getDatabase();
+        } else {
+          console.log("Failed to connect to MongoDB atlas".underline.red);
+        }
+      });
+    }
+    connectionMadeToMongoDB();
   })
   .on("error", function (err) {
     console.log(err);
   });
+
+
