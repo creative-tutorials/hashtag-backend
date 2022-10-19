@@ -34,8 +34,6 @@ const userdb = [];
 let currentYear = new Date().getFullYear();
 
 let database;
-
-app.use("/static", express.static(path.join(__dirname, "public")));
 const key = process.env.SERVER_API_KEY;
 
 app.get(`/`, (req, res) => {
