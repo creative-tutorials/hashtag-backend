@@ -1,4 +1,4 @@
-'use-strict'
+"use-strict";
 const { connectToDatabase, getDatabase } = require("./database/mongodb");
 let colors = require("colors");
 let express = require("express");
@@ -82,6 +82,15 @@ app.post("/signup", (req, res) => {
           req.body.genLimit = 0;
           res.status(200).send(req.body);
           userdb.push(req.body);
+          await database
+          .collection("users")
+          .insertOne(req.body)
+          .then((result) => {
+            console.log(result);
+          })
+          .catch((error) => {
+            console.log(error);
+          });
         } else {
           console.log("Password is not strong");
           res.status(400).send({
@@ -146,12 +155,7 @@ const login = (res, req) => {
 
   async function CheckDatabase() {
     if (finduser) {
-      res.send(finduser)
-      await database.collection('users').insertOne(req.body).then((result) => {
-        console.log(result)
-      }).catch((error) => {
-        console.log(error);
-      });
+      res.send(finduser);
     } else {
       res.status(403).send({
         error:
@@ -279,7 +283,7 @@ app.post("/make_post", (req, res) => {
       req.body.created = combineDateToReasonableData;
       req.body.username = identifyuserAuthStatus.username;
       console.log("post req", req.body.post);
-      console.log(identifyuserAuthStatus.username)
+      console.log(identifyuserAuthStatus.username);
       posts.push(req.body);
       res.status(200).send({ message: "Post was successfully created." });
     } else {
@@ -349,14 +353,6 @@ app.post("/upload", (req, res) => {
   const findemail = userdb.find(
     (findemail) => findemail.email === req.body.email
   );
-  /**
-   * The RunFindMailIfCheck function is used to check if the user has logged in or not.
-   * If they have, it will allow them to upload a file.
-   * If they haven't, it will send an error message back saying that they are unauthorized and need to login/signup first.
-   * @return A message if the user is authorized to upload a file
-   *
-   * @docauthor 👀
-   */
 
   const CheckForFileSize = async () => {
     const fileSizeLimit = 98103;
@@ -370,7 +366,9 @@ app.post("/upload", (req, res) => {
         res.send({ message: "Your File has been Uploaded Succesfully" });
       }
     } catch (error) {
-      res.status(413).send({ error: "Your file is too large for the server to handle" });
+      res
+        .status(413)
+        .send({ error: "Your file is too large for the server to handle" });
       console.log("Your file is too large for the server to handle");
     }
   };
@@ -447,15 +445,21 @@ function UsernameGenerator(res, req) {
         finduser.email === req.body.email &&
         finduser.password === req.body.password
     );
-    if(finduser) {
+    if (finduser) {
       CheckForMaxedOutLimitOnUser();
     } else {
-      res.status(401).send({error: "You would need to login/signup first to be able to generate your unique username"})
+      res.status(401).send({
+        error:
+          "You would need to login/signup first to be able to generate your unique username",
+      });
     }
     async function CheckForMaxedOutLimitOnUser() {
-      if(finduser.genLimit > Maxedgeneratelimit) {
+      if (finduser.genLimit > Maxedgeneratelimit) {
         console.log(Maxedgeneratelimit);
-        res.status(400).send({error: "Hi There! you have reached your daily limit of 10 username generators"})
+        res.status(400).send({
+          error:
+            "Hi There! you have reached your daily limit of 10 username generators",
+        });
       } else {
         const length = req.body.length;
         const num = 8;
@@ -467,13 +471,56 @@ function UsernameGenerator(res, req) {
           }
           return res;
         };
-        finduser.genLimit++
-        finduser.username = randomNameGenerator(length)
+        finduser.genLimit++;
+        finduser.username = randomNameGenerator(length);
         res.send({ YOUR_GENERATED_USERNAME: randomNameGenerator(length) });
-  
       }
-
     }
+  }
+}
+const trending = [
+  [
+    {
+      icon: "#",
+      trends: ["programming", "jobs", "startup"],
+      url: "this.trends",
+    }
+  ]
+];
+app.route("/trends").get((req, res) => {
+  TrendingList(res, req);
+});
+
+function TrendingList(res, req) {
+  res.send(trending);
+}
+
+app.route("/add-trends").post((req, res) => {
+  AddNewTrends(res, req);
+});
+
+async function AddNewTrends(res, req) {
+  const trends = req.body;
+
+  /* The above code is checking if the trends array has more than one element. If it does, it returns a
+ 400 error. If it doesn't, it returns a 200 success message. */
+  if (trends.length > 1) {
+    res.status(400).send({ error: "You can only add one trends at a time" });
+  } else {
+    console.log(trends);
+    trending.push(trends);
+    await database
+        .collection("trends")
+        .insertMany(trends)
+        .then((result) => {
+          console.log(result);
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    res
+      .status(200)
+      .send({ message: "Your trends has been added successfully" });
   }
 }
 
@@ -495,5 +542,3 @@ app
   .on("error", function (err) {
     console.log(err);
   });
-
-
