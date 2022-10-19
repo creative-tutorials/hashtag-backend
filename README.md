@@ -14,6 +14,20 @@ Open source alternative to twitter
 </p>
 </div>
 
+<details>
+<summary>Check Out This First 🧐</summary>
+
+<ol>
+<li>
+
+[view original documentation](https://github.com/creative-tutorials/hashtag#readme)
+
+</li>
+</ol>
+
+</details>
+
+---
 
 Hashtag is a simple social networking platform that allows you to connect to different people around different organizations and locations. Hashtag has an aim of disculding bad words, bad posts, and any form of abusive behavior that violates our Policies.
 
