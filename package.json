@@ -7,6 +7,10 @@
   "author": "creative-tutorials",
   "license": "MIT",
   "private": true,
+  "scripts": {
+    "test": "yarn test",
+    "start": "node index.js"
+  },
   "dependencies": {
     "axios": "^0.27.2",
     "colors": "^1.4.0",
@@ -24,8 +28,5 @@
     "nodemon": "^2.0.20",
     "stream-to-blob-url": "^3.0.2",
     "token-generator": "^1.0.0"
-  },
-  "scripts": {
-    "start": "node index.js"
   }
 }
