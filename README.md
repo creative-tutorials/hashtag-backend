@@ -8,11 +8,10 @@
 <div align="center">
 
 ## Hashtag 
-</div>
 
-<div align="center">
-
+<p>
 Open source alternative to twitter
+</p>
 </div>
 
 
