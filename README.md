@@ -36,9 +36,9 @@ Hashtag was built as an alternative to the traditional social networking platfor
 
 ## Backend of Hashtag
 
-As you read the main [documentation](README.md) for HashTag, you can now understand where all those post, comments, and other information goes to.
+As you read the main [documentation](https://github.com/creative-tutorials/hashtag-backend#readme) for HashTag, you can now understand where all those post, comments, and other information goes to.
 
-This repo handles the backend of Hashtag
+> **NOTE:** This repo handles the backend of Hashtag only
 
 
 ## Features
