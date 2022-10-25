@@ -81,14 +81,14 @@ app.post("/signup", (req, res) => {
           res.status(200).send(req.body);
           userdb.push(req.body);
           await database
-          .collection("users")
-          .insertOne(req.body)
-          .then((result) => {
-            console.log(result);
-          })
-          .catch((error) => {
-            console.log(error);
-          });
+            .collection("users")
+            .insertOne(req.body)
+            .then((result) => {
+              console.log(result);
+            })
+            .catch((error) => {
+              console.log(error);
+            });
         } else {
           console.log("Password is not strong");
           res.status(400).send({
@@ -348,8 +348,8 @@ app.post("/upload", (req, res) => {
   console.log(filetype);
   const apikey = req.headers.apikey;
   const { files } = req.body;
-  const findemail = userdb.find(
-    (findemail) => findemail.email === req.body.email
+  const identifyuserAuthStatus = userdb.find(
+    (identifyuserAuthStatus) => identifyuserAuthStatus.email === req.body.email
   );
 
   const CheckForFileSize = async () => {
@@ -359,6 +359,7 @@ app.post("/upload", (req, res) => {
       if (userUploadFileSize > fileSizeLimit) {
         throw new Error("File size limit exceeded");
       } else {
+        req.body.username = identifyuserAuthStatus.username;
         console.log("File upload completed");
         uploads.push(req.body.files);
         res.send({ message: "Your File has been Uploaded Succesfully" });
@@ -393,7 +394,7 @@ app.post("/upload", (req, res) => {
     }
   };
   async function CheckIfUserIsRegistered() {
-    if (findemail) {
+    if (identifyuserAuthStatus) {
       UserHasRegisterd();
     } else {
       res.status(401).send({
@@ -477,14 +478,17 @@ function UsernameGenerator(res, req) {
   }
 }
 const trending = [
-  [
-    {
-      icon: "#",
-      trends: ["programming", "jobs", "startup"],
-      url: "this.trends",
-    }
-  ]
+  {
+    icon: "#",
+    trends: "Hashtag",
+    url: "http://localhost:5173/trends",
+    created: "21-Oct-22",
+    likes: "1K People Likes It",
+    intrest: "1K People Intrested",
+    _id: "0ab"
+  },
 ];
+
 app.route("/trends").get((req, res) => {
   TrendingList(res, req);
 });
@@ -498,27 +502,32 @@ app.route("/add-trends").post((req, res) => {
 });
 
 async function AddNewTrends(res, req) {
-  const trends = req.body;
+  const apikey = req.headers.apikey;
+  if(apikey === key) {
+    const trends = req.body;
 
   /* The above code is checking if the trends array has more than one element. If it does, it returns a
  400 error. If it doesn't, it returns a 200 success message. */
   if (trends.length > 1) {
     res.status(400).send({ error: "You can only add one trends at a time" });
   } else {
-    console.log(trends);
+    console.log({message: 'Trend created succesffully', error: false, visibleToDatabase: true});
     trending.push(trends);
     await database
-        .collection("trends")
-        .insertMany(trends)
-        .then((result) => {
-          console.log(result);
-        })
-        .catch((error) => {
-          console.log(error);
-        });
+      .collection("trends")
+      .insertOne(trends)
+      .then((result) => {
+        console.log(result);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
     res
       .status(200)
-      .send({ message: "Your trends has been added successfully" });
+      .send({message: 'Trend created succesffully', error: false, visibleToDatabase: true});
+  }
+  } else {
+    return res.status(401).send({ error: "API KEY is invalid or required!" });
   }
 }
 
