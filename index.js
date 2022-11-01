@@ -31,7 +31,6 @@ app.use(express.urlencoded({ limit: "200mb", extended: true }));
 const PORT = process.env.PORT || 6342;
 
 const userdb = [];
-let currentYear = new Date().getFullYear();
 
 let database;
 const key = process.env.SERVER_API_KEY;
@@ -40,7 +39,7 @@ app.get(`/`, (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   if (apikey === key) {
-    res.status(200).send("Hello");
+    res.status(200).send({message: "You are running v2.2.3 of this API"});
   } else {
     res.status(400).send({ error: "API KEY is invalid or required!" });
   }
@@ -50,74 +49,84 @@ app.get(`/`, (req, res) => {
 app.post("/signup", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  let { publicID, password, age, genLimit } = req.body;
-  const findemail = userdb.find(
-    (findemail) => findemail.email === req.body.email
+  let { publicID, password, age } = req.body;
+  const identifyuserAuthStatus = userdb.find(
+    (identifyuserAuthStatus) => identifyuserAuthStatus.email === req.body.email
   );
 
   if (apikey === key) {
-    const ContinueSignupProcess = () => {
-      async function CheckForPasswordLenght() {
-        if (password.length > 10) {
-          console.log("Password is strong");
-          /* Declaring a variable named length and assigning it the value of 8. */
-          const length = 8;
-          let result = "";
-          let characters =
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-          /** Creating a variable called charactersLength and assigning it the value of the length of
-          the characters string. 
-          *@return {number} - the characters string length
-          */
-          let charactersLength = characters.length;
-          for (let i = 0; i < length; i++) {
-            result += characters.charAt(
-              Math.floor(Math.random() * charactersLength)
-            );
-          }
-          req.body.publicID = result;
-          req.body.username = "YOUR_USERNAME";
-          req.body.genLimit = 0;
-          res.status(200).send(req.body);
-          userdb.push(req.body);
-          await database
-            .collection("users")
-            .insertOne(req.body)
-            .then((result) => {
-              console.log(result);
-            })
-            .catch((error) => {
-              console.log(error);
-            });
-        } else {
-          console.log("Password is not strong");
-          res.status(400).send({
-            error:
-              "Couldn't complete your request because your password is weak",
-          });
-        }
-      }
-
-      if (age < 18) {
-        res.status(401).send({
-          error: "You must be at least 18 years old or older to sign up.",
-        });
-      } else {
-        CheckForPasswordLenght();
-      }
-    };
-
-    if (findemail) {
-      res.status(409).send({
-        error: "You already have an account with that email address",
-      });
-    } else {
-      ContinueSignupProcess();
-    }
+    CheckIfUserAlreadyExist(
+      identifyuserAuthStatus,
+      req,
+      res,
+      password,
+      age
+    );
   } else {
     res.status(400).send({ error: "API key is invalid or required" });
   }
 });
+function CheckIfUserAlreadyExist(
+  identifyuserAuthStatus,
+  req,
+  res,
+  password,
+  age
+) {
+  if (identifyuserAuthStatus) {
+    res.status(409).send({
+      error: "You already have an account with that email address",
+    });
+  } else {
+    ContinueSignupProcess(password, age, req, res);
+  }
+}
+const ContinueSignupProcess = (password, age, req, res) => {
+  if (age < 18) {
+    res.status(401).send({
+      error: "You must be at least 18 years old or older to sign up.",
+    });
+  } else {
+    CheckForPasswordLenght(password, req, res);
+  }
+};
+
+async function CheckForPasswordLenght(password, req, res) {
+  if (password.length > 10) {
+    console.log("Password is strong");
+    const length = 8;
+    let result = "";
+    let characters =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    /** Creating a variable called charactersLength and assigning it the value of the length of
+    the characters string. 
+    *@return {number} - the characters string length
+    */
+    let charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    req.body.publicID = result;
+    req.body.username = "YOUR_USERNAME";
+    req.body.admin = true;
+    res.status(200).send(req.body);
+    userdb.push(req.body);
+    await database
+      .collection("users")
+      .insertOne(req.body)
+      .then((result) => {
+        console.log(result);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  } else {
+    console.log("Password is not strong");
+    res.status(400).send({
+      error: "Couldn't complete your request because your password is weak",
+    });
+  }
+}
 
 app.get("/userdb", (req, res) => {
   res.setHeader("Content-Type", "application/json");
@@ -125,7 +134,6 @@ app.get("/userdb", (req, res) => {
   const apikey = req.headers.apikey;
   if (apikey === key) {
     res.send(userdb);
-    const lastElementOfTheUserArray = userdb[userdb.length - 1];
   } else {
     res.status(400).send({ error: "API KEY is invalid or required!" });
   }
@@ -135,35 +143,28 @@ app.route("/login").post((req, res) => {
   login(res, req);
 });
 
-/**
- * Trying to log user in - to have access to the app, while logging in the user, we're validating the password and email address
- * The validation is taken place to make sure, user has an account with our software
- * We then give user back the access to the app, if validation is complete and succesfull
- * @param res - response object
- * @param req - request
- */
 const login = (res, req) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  const finduser = userdb.find(
-    (finduser) =>
-      finduser.email === req.body.email &&
-      finduser.password === req.body.password
+  const identifyuserAuthStatus = userdb.find(
+    (identifyuserAuthStatus) =>
+      identifyuserAuthStatus.email === req.body.email &&
+      identifyuserAuthStatus.password === req.body.password
   );
 
-  async function CheckDatabase() {
-    if (finduser) {
-      res.send(finduser);
+  async function ValidateIfUserAccountExist() {
+    if (identifyuserAuthStatus) {
+      res.send(identifyuserAuthStatus);
     } else {
       res.status(403).send({
         error:
-          "Your account is not authorized to access the requested resource.",
+          "It seems like you don't have an account with us, try creating a new one",
       });
     }
   }
 
   if (apikey === key) {
-    CheckDatabase();
+    ValidateIfUserAccountExist();
   } else {
     res.status(400).send({
       error: "API KEY is invalid or required!",
@@ -174,22 +175,15 @@ const login = (res, req) => {
 app.put("/edit_profile", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  const finduser = userdb.find(
-    (finduser) =>
-      finduser.email === req.body.email &&
-      finduser.password === req.body.password
+  const identifyuserAuthStatus = userdb.find(
+    (identifyuserAuthStatus) =>
+      identifyuserAuthStatus.email === req.body.email &&
+      identifyuserAuthStatus.password === req.body.password
   );
 
-  /**
-   * Finds the user with the given username and updates their profile with the given data.
-   * @param {string} username - the username of the user to update
-   * @param {string} email - the email of the user to update
-   * @param {string} password - the password of the user to update
-   * @param
-   */
   try {
-    function RunFindMailIfCheck() {
-      if (finduser) {
+    function CheckIfUserIsAuthenticated() {
+      if (identifyuserAuthStatus) {
         function CheckBioLength() {
           const bios = req.body.bio;
 
@@ -198,9 +192,9 @@ app.put("/edit_profile", (req, res) => {
               error: "You must have at least " + 90 + " bio characters",
             });
           } else {
-            finduser.username = req.body.username;
-            finduser.bio = req.body.bio;
-            finduser.dob = req.body.dob;
+            identifyuserAuthStatus.username = req.body.username;
+            identifyuserAuthStatus.bio = req.body.bio;
+            identifyuserAuthStatus.dob = req.body.dob;
             res
               .status(200)
               .send({ message: "Profile has been updated successfully :)" });
@@ -208,15 +202,15 @@ app.put("/edit_profile", (req, res) => {
         }
         CheckBioLength();
       }
-      if (!finduser) {
+      if (!identifyuserAuthStatus) {
         res.status(403).send({
           error:
-            "We had issues editing your profile because of some invalid credentials",
+            "You are not authorized to edit your profile, please try loggin in or signing up and TryAgain",
         });
       }
     }
     if (apikey === key) {
-      RunFindMailIfCheck();
+      CheckIfUserIsAuthenticated();
     } else {
       res.status(400).send({ error: "API KEY is invalid or required!" });
     }
@@ -280,6 +274,7 @@ app.post("/make_post", (req, res) => {
       // console.log(fetchingDatePostWasMade);
       req.body.created = combineDateToReasonableData;
       req.body.username = identifyuserAuthStatus.username;
+      req.body.publicID = identifyuserAuthStatus.publicID;
       console.log("post req", req.body.post);
       console.log(identifyuserAuthStatus.username);
       posts.push(req.body);
@@ -314,14 +309,13 @@ const comments = [];
 app.post("/comment", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  const { comment } = req.body;
-  const finduser = userdb.find(
-    (finduser) => finduser.username === req.body.username
+  const identifyuserAuthStatus = userdb.find(
+    (identifyuserAuthStatus) => identifyuserAuthStatus.username === req.body.username
   );
   try {
-    function RunFindUserIfCheck() {
-      if (finduser) {
-        finduser.comments = comments;
+    function CheckIfUserExist() {
+      if (identifyuserAuthStatus) {
+        identifyuserAuthStatus.comments = comments;
         comments.push(req.body.comment);
         res.send({ message: "Comment was successfully created." });
       } else {
@@ -331,7 +325,7 @@ app.post("/comment", (req, res) => {
       }
     }
     if (apikey === key) {
-      RunFindUserIfCheck();
+      CheckIfUserExist();
     } else {
       res.status(400).send({ error: "API KEY is invalid or required!" });
     }
@@ -359,7 +353,8 @@ app.post("/upload", (req, res) => {
       if (userUploadFileSize > fileSizeLimit) {
         throw new Error("File size limit exceeded");
       } else {
-        req.body.username = identifyuserAuthStatus.username;
+        req.body.files.username = identifyuserAuthStatus.username;
+        req.body.files.created = combineDateToReasonableData;
         console.log("File upload completed");
         uploads.push(req.body.files);
         res.send({ message: "Your File has been Uploaded Succesfully" });
@@ -426,55 +421,59 @@ app.get("/upload", async (req, res) => {
   }
 });
 
-app.route("/generateUsername").post((req, res) => {
-  UsernameGenerator(res, req);
+app.route("/editprofile").post((req, res) => {
+  EditUserName(res, req);
 });
-const Maxedgeneratelimit = 2;
-function UsernameGenerator(res, req) {
-  if (!req.body.length) {
-    console.log(req.body);
-    res.status(406).send({ error: "request of length is not specified" });
+function EditUserName(res, req) {
+  console.log(req.body.username);
+  if (req.body.username === "") {
+    res.status(404).send({
+      error:
+        "We encounterd an error editing your username, This is because your username is blank, please input something to complete this process",
+    });
   } else {
-    Send_User_The_GeneratedUsername();
+    CheckIfUserIsAuthenticated();
   }
 
-  function Send_User_The_GeneratedUsername() {
+  function CheckIfUserIsAuthenticated() {
     const finduser = userdb.find(
       (finduser) =>
         finduser.email === req.body.email &&
         finduser.password === req.body.password
     );
     if (finduser) {
-      CheckForMaxedOutLimitOnUser();
+      SubmitUserDetailsAndChangeUsername();
     } else {
       res.status(401).send({
         error:
-          "You would need to login/signup first to be able to generate your unique username",
+          "You would need to login/signup first to be able to Edit your username",
       });
     }
-    async function CheckForMaxedOutLimitOnUser() {
-      if (finduser.genLimit > Maxedgeneratelimit) {
-        console.log(Maxedgeneratelimit);
-        res.status(400).send({
-          error:
-            "Hi There! you have reached your daily limit of 10 username generators",
-        });
-      } else {
-        const length = req.body.length;
-        const num = 8;
-        const randomNameGenerator = (length) => {
-          let res = "";
-          for (let i = 0; i < length; i++) {
-            const random = Math.floor(Math.random() * 27);
-            res += String.fromCharCode(97 + random);
-          }
-          return res;
-        };
-        finduser.genLimit++;
-        finduser.username = randomNameGenerator(length);
-        res.send({ YOUR_GENERATED_USERNAME: randomNameGenerator(length) });
-      }
+    async function SubmitUserDetailsAndChangeUsername() {
+      res.send({ YOUR_USERNAME: req.body.username });
     }
+  }
+}
+app.route("/profile/:publicID").get((req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  const apikey = req.headers.apikey;
+  if (apikey === key) {
+    FinduserByID(res, req);
+  } else {
+    res.send({ error: "Invalid API KEY" });
+  }
+});
+function FinduserByID(res, req) {
+  const publicID = req.params.publicID;
+  const result = posts.find(
+    (result) => result.publicID === req.params.publicID
+  );
+  if (!result) {
+    res
+      .status(404)
+      .send({ error: "Your ID cannot be recongnize in our database" });
+  } else {
+    res.send(result);
   }
 }
 const trending = [
@@ -485,17 +484,13 @@ const trending = [
     created: "21-Oct-22",
     likes: "1K People Likes It",
     intrest: "1K People Intrested",
-    _id: "0ab"
+    _id: "0ab",
   },
 ];
 
 app.route("/trends").get((req, res) => {
-  TrendingList(res, req);
-});
-
-function TrendingList(res, req) {
   res.send(trending);
-}
+});
 
 app.route("/add-trends").post((req, res) => {
   AddNewTrends(res, req);
@@ -503,29 +498,30 @@ app.route("/add-trends").post((req, res) => {
 
 async function AddNewTrends(res, req) {
   const apikey = req.headers.apikey;
-  if(apikey === key) {
+  if (apikey === key) {
     const trends = req.body;
 
-  /* The above code is checking if the trends array has more than one element. If it does, it returns a
+    /* The above code is checking if the trends array has more than one element. If it does, it returns a
  400 error. If it doesn't, it returns a 200 success message. */
-  if (trends.length > 1) {
-    res.status(400).send({ error: "You can only add one trends at a time" });
-  } else {
-    console.log({message: 'Trend created succesffully', error: false, visibleToDatabase: true});
-    trending.push(trends);
-    await database
-      .collection("trends")
-      .insertOne(trends)
-      .then((result) => {
-        console.log(result);
-      })
-      .catch((error) => {
-        console.log(error);
+    if (trends.length > 1) {
+      res.status(400).send({ error: "You can only add one trends at a time" });
+    } else {
+      trending.push(trends);
+      await database
+        .collection("trends")
+        .insertOne(trends)
+        .then((result) => {
+          console.log(result);
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+      res.status(200).send({
+        message: "Trend created succesffully",
+        error: false,
+        visibleToDatabase: true,
       });
-    res
-      .status(200)
-      .send({message: 'Trend created succesffully', error: false, visibleToDatabase: true});
-  }
+    }
   } else {
     return res.status(401).send({ error: "API KEY is invalid or required!" });
   }
