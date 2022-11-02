@@ -39,7 +39,7 @@ app.get(`/`, (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   if (apikey === key) {
-    res.status(200).send({message: "You are running v2.2.3 of this API"});
+    res.status(200).send({ message: "You are running v2.2.3 of this API" });
   } else {
     res.status(400).send({ error: "API KEY is invalid or required!" });
   }
@@ -49,19 +49,13 @@ app.get(`/`, (req, res) => {
 app.post("/signup", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  let { publicID, password, age } = req.body;
+  let { publicID, password, age, username } = req.body;
   const identifyuserAuthStatus = userdb.find(
     (identifyuserAuthStatus) => identifyuserAuthStatus.email === req.body.email
   );
 
   if (apikey === key) {
-    CheckIfUserAlreadyExist(
-      identifyuserAuthStatus,
-      req,
-      res,
-      password,
-      age
-    );
+    CheckIfUserAlreadyExist(identifyuserAuthStatus, req, res, password, age, username);
   } else {
     res.status(400).send({ error: "API key is invalid or required" });
   }
@@ -71,17 +65,18 @@ function CheckIfUserAlreadyExist(
   req,
   res,
   password,
-  age
+  age,
+  username
 ) {
   if (identifyuserAuthStatus) {
     res.status(409).send({
       error: "You already have an account with that email address",
     });
   } else {
-    ContinueSignupProcess(password, age, req, res);
+    ContinueSignupProcess(password, age, username, req, res);
   }
 }
-const ContinueSignupProcess = (password, age, req, res) => {
+const ContinueSignupProcess = (password, age, username, req, res) => {
   if (age < 18) {
     res.status(401).send({
       error: "You must be at least 18 years old or older to sign up.",
@@ -93,7 +88,6 @@ const ContinueSignupProcess = (password, age, req, res) => {
 
 async function CheckForPasswordLenght(password, req, res) {
   if (password.length > 10) {
-    console.log("Password is strong");
     const length = 8;
     let result = "";
     let characters =
@@ -107,7 +101,6 @@ async function CheckForPasswordLenght(password, req, res) {
       result += characters.charAt(Math.floor(Math.random() * charactersLength));
     }
     req.body.publicID = result;
-    req.body.username = "YOUR_USERNAME";
     req.body.admin = true;
     res.status(200).send(req.body);
     userdb.push(req.body);
@@ -121,7 +114,6 @@ async function CheckForPasswordLenght(password, req, res) {
         console.log(error);
       });
   } else {
-    console.log("Password is not strong");
     res.status(400).send({
       error: "Couldn't complete your request because your password is weak",
     });
@@ -310,7 +302,8 @@ app.post("/comment", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   const identifyuserAuthStatus = userdb.find(
-    (identifyuserAuthStatus) => identifyuserAuthStatus.username === req.body.username
+    (identifyuserAuthStatus) =>
+      identifyuserAuthStatus.username === req.body.username
   );
   try {
     function CheckIfUserExist() {
@@ -468,12 +461,22 @@ function FinduserByID(res, req) {
   const result = posts.find(
     (result) => result.publicID === req.params.publicID
   );
-  if (!result) {
-    res
-      .status(404)
-      .send({ error: "Your ID cannot be recongnize in our database" });
-  } else {
-    res.send(result);
+  try {
+    CheckIfIDIsValid();
+  } catch (error) {
+    res.status(500).send({
+      error:
+        "The server encountered an unexpected condition that prevented it from fulfilling the request.",
+    });
+  }
+  function CheckIfIDIsValid() {
+    if (!result) {
+      res
+        .status(404)
+        .send({ error: "Your ID cannot be recongnize in our database" });
+    } else {
+      res.send(result);
+    }
   }
 }
 const trending = [
