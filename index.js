@@ -6,7 +6,7 @@ const path = require("path");
 let app = express();
 let cors = require("cors");
 require("dotenv").config({ path: __dirname + "/.env.local" });
-let allowedOrigins = [`${process.env.SERVER1}`, `${process.env.SERVER2}`];
+let allowedOrigins = [`${process.env.SERVER1}`, `${process.env.SERVER2}`, `${process.env.SERVER3}`];
 app.use(
   cors({
     origin: function (origin, callback) {
