@@ -1,12 +1,18 @@
 "use-strict";
-const { connectToDatabase, getDatabase } = require("./database/mongodb");
-let colors = require("colors");
-let express = require("express");
-const path = require("path");
+import { connectToDatabase, getDatabase } from "./database/connection.mjs"
+import * as dotenv from 'dotenv';
+import colors from "colors";
+import express, { json, urlencoded } from "express";
+import path from "path";
 let app = express();
-let cors = require("cors");
-require("dotenv").config({ path: __dirname + "/.env.local" });
-let allowedOrigins = [`${process.env.SERVER1}`, `${process.env.SERVER2}`, `${process.env.SERVER3}`];
+import cors from "cors";
+
+let allowedOrigins = [
+  `${process.env.SERVER1}`,
+  `${process.env.SERVER2}`,
+  `${process.env.SERVER3}`,
+];
+dotenv.config();
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -25,8 +31,8 @@ app.use(
 );
 
 /* Setting the limit of the data that can be sent to the server. */
-app.use(express.json({ limit: "200mb" }));
-app.use(express.urlencoded({ limit: "200mb", extended: true }));
+app.use(json({ limit: "200mb" }));
+app.use(urlencoded({ limit: "200mb", extended: true }));
 
 const PORT = process.env.PORT || 6342;
 
@@ -39,7 +45,7 @@ app.get(`/`, (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   if (apikey === key) {
-    res.status(200).send({ message: "You are running v2.2.3 of this API" });
+    res.status(200).send({ message: "You are running v1.1.0 of this API" });
   } else {
     res.status(400).send({ error: "API KEY is invalid or required!" });
   }
@@ -49,13 +55,21 @@ app.get(`/`, (req, res) => {
 app.post("/signup", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  let { publicID, password, age, username } = req.body;
+  let { password, age, username} =
+    req.body;
   const identifyuserAuthStatus = userdb.find(
     (identifyuserAuthStatus) => identifyuserAuthStatus.email === req.body.email
   );
 
   if (apikey === key) {
-    CheckIfUserAlreadyExist(identifyuserAuthStatus, req, res, password, age, username);
+    CheckIfUserAlreadyExist(
+      identifyuserAuthStatus,
+      req,
+      res,
+      password,
+      age,
+      username
+    );
   } else {
     res.status(400).send({ error: "API key is invalid or required" });
   }
@@ -102,6 +116,9 @@ async function CheckForPasswordLenght(password, req, res) {
     }
     req.body.publicID = result;
     req.body.admin = true;
+    req.body.profile_image =
+      "https://cdn-icons-png.flaticon.com/512/3177/3177440.png";
+    req.body.banner_image = "unknown.png";
     res.status(200).send(req.body);
     userdb.push(req.body);
     await database
@@ -172,45 +189,40 @@ app.put("/edit_profile", (req, res) => {
       identifyuserAuthStatus.email === req.body.email &&
       identifyuserAuthStatus.password === req.body.password
   );
-
-  try {
-    function CheckIfUserIsAuthenticated() {
-      if (identifyuserAuthStatus) {
-        function CheckBioLength() {
-          const bios = req.body.bio;
-
-          if (bios.length > 100) {
-            res.status(200).send({
-              error: "You must have at least " + 90 + " bio characters",
-            });
-          } else {
-            identifyuserAuthStatus.username = req.body.username;
-            identifyuserAuthStatus.bio = req.body.bio;
-            identifyuserAuthStatus.dob = req.body.dob;
-            res
-              .status(200)
-              .send({ message: "Profile has been updated successfully :)" });
-          }
-        }
-        CheckBioLength();
-      }
-      if (!identifyuserAuthStatus) {
-        res.status(403).send({
-          error:
-            "You are not authorized to edit your profile, please try loggin in or signing up and TryAgain",
+  if (apikey === key) {
+    CheckIfUserIsAuthenticated();
+  } else {
+    res.status(400).send({ error: "API KEY is invalid or required!" });
+  }
+  function CheckIfUserIsAuthenticated() {
+    if (identifyuserAuthStatus) {
+      CheckBioLength();
+    }
+    function CheckBioLength() {
+      const bios = req.body.bio;
+      if (bios.length > 100) {
+        res.status(200).send({
+          error: "You must have at least " + 90 + " bio characters",
         });
+      } else {
+        ChangeInfo();
+        res
+          .status(200)
+          .send({ message: "Profile has been updated successfully :)" });
       }
     }
-    if (apikey === key) {
-      CheckIfUserIsAuthenticated();
-    } else {
-      res.status(400).send({ error: "API KEY is invalid or required!" });
+    function ChangeInfo() {
+      identifyuserAuthStatus.username = req.body.username;
+      identifyuserAuthStatus.profile_image = req.body.profile_image;
+      identifyuserAuthStatus.banner_image = req.body.banner_image;
+      identifyuserAuthStatus.bio = req.body.bio;
     }
-  } catch (error) {
-    res.status(500).send({
-      error:
-        "The server encountered an unexpected condition that prevented it from fulfilling the request.",
-    });
+    if (!identifyuserAuthStatus) {
+      res.status(403).send({
+        error:
+          "You are not authorized to edit your profile, please try loggin in or signing up and TryAgain",
+      });
+    }
   }
 });
 
@@ -246,7 +258,7 @@ const fetchingCurrentDate = getCurrentDate.getDate();
 const fetchCurrentYear = getFullYear.getFullYear();
 const combineDateToReasonableData =
   currentMonth + " " + fetchingCurrentDate + " " + fetchCurrentYear;
-app.post("/make_post", (req, res) => {
+app.post("/post", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   const identifyuserAuthStatus = userdb.find(
@@ -254,6 +266,11 @@ app.post("/make_post", (req, res) => {
       identifyuserAuthStatus.email === req.body.email &&
       identifyuserAuthStatus.password === req.body.password
   );
+  if (apikey === key) {
+    CheckIfUserIsAuthenticated();
+  } else {
+    res.status(400).send({ error: "API KEY is invalid or required!" });
+  }
   /**
    * The function checks if the user is authenticated, if the user is authenticated, the function will
    * create a post, if the user is not authenticated, the function will return an error message.
@@ -261,14 +278,9 @@ app.post("/make_post", (req, res) => {
    * @return {status - 401} - 401, if the user is not authenticated
    * @return {status - 200} - 200, if the user is authenticated, post user's post to the API.
    */
-  function CheckIfUserIsAuthenticated() {
+   function CheckIfUserIsAuthenticated() {
     if (identifyuserAuthStatus) {
-      // console.log(fetchingDatePostWasMade);
-      req.body.created = combineDateToReasonableData;
-      req.body.username = identifyuserAuthStatus.username;
-      req.body.publicID = identifyuserAuthStatus.publicID;
-      console.log("post req", req.body.post);
-      console.log(identifyuserAuthStatus.username);
+      FetchRequiredInfoFromUserReq();
       posts.push(req.body);
       res.status(200).send({ message: "Post was successfully created." });
     } else {
@@ -277,22 +289,22 @@ app.post("/make_post", (req, res) => {
       });
     }
   }
-  if (apikey === key) {
-    CheckIfUserIsAuthenticated();
-  } else {
-    res.status(400).send({ error: "API KEY is invalid or required!" });
+  function FetchRequiredInfoFromUserReq() {
+    req.body.created = combineDateToReasonableData;
+    req.body.username = identifyuserAuthStatus.username;
+    req.body.publicID = identifyuserAuthStatus.publicID;
+    req.body.profile_image = identifyuserAuthStatus.profile_image;
+    req.body.banner_image = identifyuserAuthStatus.banner_image;
   }
 });
 
 app.get("/post", (req, res) => {
   if (posts === undefined || posts.length == 0) {
-    console.log("empty");
-    res.status(200).send({
+    res.status(500).send({
       xresponse:
         "couldn't find any post on hastag database Try refreshing or try again",
     });
   } else {
-    console.log("not empty");
     res.status(200).send(posts);
   }
 });
@@ -305,159 +317,115 @@ app.post("/comment", (req, res) => {
     (identifyuserAuthStatus) =>
       identifyuserAuthStatus.username === req.body.username
   );
-  try {
-    function CheckIfUserExist() {
-      if (identifyuserAuthStatus) {
-        identifyuserAuthStatus.comments = comments;
-        comments.push(req.body.comment);
-        res.send({ message: "Comment was successfully created." });
-      } else {
-        res.status(401).send({
-          error: "You are unauthorized to comment on this post",
-        });
-      }
-    }
-    if (apikey === key) {
-      CheckIfUserExist();
+  if (apikey === key) {
+    CheckIfUserExist();
+  } else {
+    res.status(400).send({ error: "API KEY is invalid or required!" });
+  }
+  function CheckIfUserExist() {
+    if (identifyuserAuthStatus) {
+      identifyuserAuthStatus.comments = comments;
+      comments.push(req.body.comment);
+      res.send({ message: "Comment was successfully created." });
     } else {
-      res.status(400).send({ error: "API KEY is invalid or required!" });
+      res.status(401).send({
+        error: "You are unauthorized to comment on this post",
+      });
     }
-  } catch {
-    res.status(500).send({
-      error:
-        "The server encountered an unexpected condition that prevented it from fulfilling the request.",
-    });
   }
 });
-const uploads = [];
-app.post("/upload", (req, res) => {
-  const filetype = req.body.files.fileType;
-  console.log(filetype);
+const upload_database = [];
+app.route("/upload").post((req, res) => {
   const apikey = req.headers.apikey;
   const { files } = req.body;
   const identifyuserAuthStatus = userdb.find(
     (identifyuserAuthStatus) => identifyuserAuthStatus.email === req.body.email
   );
-
-  const CheckForFileSize = async () => {
-    const fileSizeLimit = 98103;
-    const userUploadFileSize = req.body.files.fileSize;
-    try {
-      if (userUploadFileSize > fileSizeLimit) {
-        throw new Error("File size limit exceeded");
-      } else {
-        req.body.files.username = identifyuserAuthStatus.username;
-        req.body.files.created = combineDateToReasonableData;
-        console.log("File upload completed");
-        uploads.push(req.body.files);
-        res.send({ message: "Your File has been Uploaded Succesfully" });
-      }
-    } catch (error) {
-      res
-        .status(413)
-        .send({ error: "Your file is too large for the server to handle" });
-      console.log("Your file is too large for the server to handle");
-    }
-  };
-  const UserHasRegisterd = () => {
-    CheckForFileSize();
-    try {
-      if (
-        filetype === "image/jpeg" ||
-        filetype === "image/png" ||
-        filetype === "image/gif" ||
-        filetype === "image/jfif" ||
-        filetype === "image/jpg" ||
-        filetype === "video/mp4"
-      ) {
-        console.log("file type meets the requirements");
-      } else {
-        console.log("Failed to upload file: ");
-        res.send({ message: "Failed to upload file" });
-      }
-    } catch (error) {
-      res.status(412).send({
-        error,
-      });
-    }
-  };
-  async function CheckIfUserIsRegistered() {
-    if (identifyuserAuthStatus) {
-      UserHasRegisterd();
-    } else {
-      res.status(401).send({
-        error:
-          "You are unauthorized to upload a file, please login/signup to continue",
-      });
-    }
-  }
+  CheckIfAPIKeyIsValid(apikey, files, identifyuserAuthStatus, req, res);
+});
+function CheckIfAPIKeyIsValid(apikey, req, res) {
   if (apikey === key) {
-    CheckIfUserIsRegistered();
+    CheckIfUserIsAuthenticated(identifyuserAuthStatus, req, res);
   } else {
     res.status(400).send({ error: "API KEY is invalid or required!" });
   }
-});
+}
+async function CheckIfUserIsAuthenticated(identifyuserAuthStatus, req, res) {
+  if (identifyuserAuthStatus) {
+    CheckFileTypeRequirement(req, res);
+  } else {
+    res.status(401).send({
+      error:
+        "You are unauthorized to upload a file, please login/signup to continue",
+    });
+  }
+}
+async function CheckFileTypeRequirement(req, res) {
+  const filetype = req.body.files.fileType;
+  try {
+    if (
+      filetype === "image/jpeg" ||
+      filetype === "image/png" ||
+      filetype === "image/gif" ||
+      filetype === "image/jfif" ||
+      filetype === "image/jpg" ||
+      filetype === "video/mp4"
+    ) {
+      CheckFileSizeRequirement(req, res);
+    } else {
+      console.log("Failed to upload file: ");
+      res.send({ error: "Failed to upload file" });
+    }
+  } catch (error) {
+    res.status(412).send({
+      error,
+    });
+  }
+}
+function CheckFileSizeRequirement(req, res) {
+  const fileSizeLimit = 98103;
+  const userUploadFileSize = req.body.files.fileSize;
+  try {
+    if (userUploadFileSize > fileSizeLimit) {
+      throw new Error("File size limit exceeded");
+    } else {
+      UploadFilesToDatabase(req, res);
+    }
+  } catch (error) {
+    res
+      .status(413)
+      .send({ error: "Your file is too large for the server to handle" });
+  }
+}
+function UploadFilesToDatabase(req, res) {
+  req.body.files.username = identifyuserAuthStatus.username;
+  req.body.files.created = combineDateToReasonableData;
+  console.log("File upload completed");
+  upload_database.push(req.body.files);
+  res.send({ message: "Your File has been Uploaded Succesfully" });
+}
 app.get("/upload", async (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   if (apikey === key) {
-    try {
-      res.send(uploads);
-    } catch (err) {
-      res.status(500).send({
-        error:
-          "The server encountered an unexpected condition that prevented it from fulfilling the request.",
-      });
-    }
+    res.send(upload_database);
   } else {
     res.status(401).send({ error: "API KEY is invalid or required!" });
   }
 });
 
-app.route("/editprofile").post((req, res) => {
-  EditUserName(res, req);
-});
-function EditUserName(res, req) {
-  console.log(req.body.username);
-  if (req.body.username === "") {
-    res.status(404).send({
-      error:
-        "We encounterd an error editing your username, This is because your username is blank, please input something to complete this process",
-    });
-  } else {
-    CheckIfUserIsAuthenticated();
-  }
-
-  function CheckIfUserIsAuthenticated() {
-    const finduser = userdb.find(
-      (finduser) =>
-        finduser.email === req.body.email &&
-        finduser.password === req.body.password
-    );
-    if (finduser) {
-      SubmitUserDetailsAndChangeUsername();
-    } else {
-      res.status(401).send({
-        error:
-          "You would need to login/signup first to be able to Edit your username",
-      });
-    }
-    async function SubmitUserDetailsAndChangeUsername() {
-      res.send({ YOUR_USERNAME: req.body.username });
-    }
-  }
-}
 app.route("/profile/:publicID").get((req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   if (apikey === key) {
-    FinduserByID(res, req);
+    FetchUserDataViaID(res, req);
   } else {
-    res.send({ error: "Invalid API KEY" });
+    res.status(401).send({error: 'API Key is Invalid or not provided'})
   }
 });
-function FinduserByID(res, req) {
+function FetchUserDataViaID(res, req) {
   const publicID = req.params.publicID;
+  console.log(publicID);
   const result = posts.find(
     (result) => result.publicID === req.params.publicID
   );
@@ -465,21 +433,20 @@ function FinduserByID(res, req) {
     CheckIfIDIsValid();
   } catch (error) {
     res.status(500).send({
-      error:
-        "The server encountered an unexpected condition that prevented it from fulfilling the request.",
+      error: error,
     });
   }
   function CheckIfIDIsValid() {
     if (!result) {
       res
         .status(404)
-        .send({ error: "Your ID cannot be recongnize in our database" });
+        .send({ error: "You must make a post to have the access to changing your profile details" });
     } else {
       res.send(result);
     }
   }
 }
-const trending = [
+const trends_data = [
   {
     icon: "#",
     trends: "Hashtag",
@@ -492,7 +459,7 @@ const trending = [
 ];
 
 app.route("/trends").get((req, res) => {
-  res.send(trending);
+  res.send(trends_data);
 });
 
 app.route("/add-trends").post((req, res) => {
@@ -509,7 +476,7 @@ async function AddNewTrends(res, req) {
     if (trends.length > 1) {
       res.status(400).send({ error: "You can only add one trends at a time" });
     } else {
-      trending.push(trends);
+      trends_data.push(trends);
       await database
         .collection("trends")
         .insertOne(trends)

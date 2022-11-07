@@ -1,6 +1,7 @@
 {
   "name": "hashtag-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "the backend for hashtag",
   "main": "index.js",
   "repository": "https://github.com/creative-tutorials/hashtag-backend",
