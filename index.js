@@ -44,10 +44,13 @@ const key = process.env.SERVER_API_KEY;
 app.get(`/`, (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  if (apikey === key) {
-    res.status(200).send({ message: "You are running v1.1.0 of this API" });
-  } else {
-    res.status(400).send({ error: "API KEY is invalid or required!" });
+  try {
+    if(apikey !== key) {
+      throw new Error("Hello From Server Error")
+    }
+    res.status(200).send({ status: "You are running v1.1.0 of this API" })
+  } catch (error) {
+    res.status(500).send({error: 'Could not fulfill your request, because API is invalid'});
   }
 });
 
@@ -228,12 +231,12 @@ app.put("/edit_profile", (req, res) => {
 
 const posts = [
   {
-    username: "Hashtag",
+    username: "hashtag_community",
     post: "Welcome to hashtag",
     status: "posting",
     pfp: "",
-    image: "",
-    created: "June 14 2016",
+    profile_image: "https://cdn-icons-png.flaticon.com/512/3177/3177440.png",
+    created: "October 14 2022",
   },
 ];
 const getCurrentMonth = new Date();
@@ -341,9 +344,9 @@ app.route("/upload").post((req, res) => {
   const identifyuserAuthStatus = userdb.find(
     (identifyuserAuthStatus) => identifyuserAuthStatus.email === req.body.email
   );
-  CheckIfAPIKeyIsValid(apikey, files, identifyuserAuthStatus, req, res);
+  CheckIfAPIKeyIsValid(apikey, identifyuserAuthStatus, req, res);
 });
-function CheckIfAPIKeyIsValid(apikey, req, res) {
+function CheckIfAPIKeyIsValid(apikey, identifyuserAuthStatus, req, res) {
   if (apikey === key) {
     CheckIfUserIsAuthenticated(identifyuserAuthStatus, req, res);
   } else {
@@ -425,8 +428,7 @@ app.route("/profile/:publicID").get((req, res) => {
 });
 function FetchUserDataViaID(res, req) {
   const publicID = req.params.publicID;
-  console.log(publicID);
-  const result = posts.find(
+  const result = userdb.find(
     (result) => result.publicID === req.params.publicID
   );
   try {
@@ -440,7 +442,7 @@ function FetchUserDataViaID(res, req) {
     if (!result) {
       res
         .status(404)
-        .send({ error: "You must make a post to have the access to changing your profile details" });
+        .send({ error: "Cannot fetch or change profile details, because you haven't posted anything." });
     } else {
       res.send(result);
     }
@@ -448,10 +450,8 @@ function FetchUserDataViaID(res, req) {
 }
 const trends_data = [
   {
-    icon: "#",
-    trends: "Hashtag",
-    url: "http://localhost:5173/trends",
-    created: "21-Oct-22",
+    thumbnail: "https://images.unsplash.com/photo-1558655146-364adaf1fcc9?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8NXx8YXBwfGVufDB8fDB8fA%3D%3D&auto=format&fit=crop&w=500&q=60",
+    title: "Hashtag",
     likes: "1K People Likes It",
     intrest: "1K People Intrested",
     _id: "0ab",
