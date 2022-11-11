@@ -1,6 +1,6 @@
 "use-strict";
-import { connectToDatabase, getDatabase } from "./database/connection.mjs"
-import * as dotenv from 'dotenv';
+import { connectToDatabase, getDatabase } from "./database/connection.mjs";
+import * as dotenv from "dotenv";
 import colors from "colors";
 import express, { json, urlencoded } from "express";
 import path from "path";
@@ -31,8 +31,8 @@ app.use(
 );
 
 /* Setting the limit of the data that can be sent to the server. */
-app.use(json({ limit: "200mb" }));
-app.use(urlencoded({ limit: "200mb", extended: true }));
+app.use(json({ limit: "500mb" }));
+app.use(urlencoded({ limit: "500mb", extended: true }));
 
 const PORT = process.env.PORT || 6342;
 
@@ -45,12 +45,14 @@ app.get(`/`, (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
   try {
-    if(apikey !== key) {
-      throw new Error("Hello From Server Error")
+    if (apikey !== key) {
+      throw new Error("Hello From Server Error");
     }
-    res.status(200).send({ status: "You are running v1.1.0 of this API" })
+    res.status(200).send({ status: "You are running v1.1.0 of this API" });
   } catch (error) {
-    res.status(500).send({error: 'Could not fulfill your request, because API is invalid'});
+    res.status(500).send({
+      error: "Could not fulfill your request, because API is invalid",
+    });
   }
 });
 
@@ -58,8 +60,7 @@ app.get(`/`, (req, res) => {
 app.post("/signup", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
-  let { password, age, username} =
-    req.body;
+  let { password, age, username } = req.body;
   const identifyuserAuthStatus = userdb.find(
     (identifyuserAuthStatus) => identifyuserAuthStatus.email === req.body.email
   );
@@ -208,13 +209,13 @@ app.put("/edit_profile", (req, res) => {
           error: "You must have at least " + 90 + " bio characters",
         });
       } else {
-        ChangeInfo();
+        UpdateProfile();
         res
           .status(200)
           .send({ message: "Profile has been updated successfully :)" });
       }
     }
-    function ChangeInfo() {
+    function UpdateProfile() {
       identifyuserAuthStatus.username = req.body.username;
       identifyuserAuthStatus.profile_image = req.body.profile_image;
       identifyuserAuthStatus.banner_image = req.body.banner_image;
@@ -239,28 +240,30 @@ const posts = [
     created: "October 14 2022",
   },
 ];
-const getCurrentMonth = new Date();
-const getCurrentDate = new Date();
-const getFullYear = new Date();
-const months = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-const currentMonth = months[getCurrentMonth.getMonth()];
-const fetchingCurrentDate = getCurrentDate.getDate();
-const fetchCurrentYear = getFullYear.getFullYear();
-const combineDateToReasonableData =
-  currentMonth + " " + fetchingCurrentDate + " " + fetchCurrentYear;
+let FullDate = null;
+function DateFunction() {
+  const getCurrentMonth = new Date();
+  const getCurrentDate = new Date();
+  const getFullYear = new Date();
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const currentMonth = months[getCurrentMonth.getMonth()];
+  const fetchingCurrentDate = getCurrentDate.getDate();
+  const fetchCurrentYear = getFullYear.getFullYear();
+  FullDate = currentMonth + " " + fetchingCurrentDate + " " + fetchCurrentYear;
+}
 app.post("/post", (req, res) => {
   res.setHeader("Content-Type", "application/json");
   const apikey = req.headers.apikey;
@@ -281,7 +284,7 @@ app.post("/post", (req, res) => {
    * @return {status - 401} - 401, if the user is not authenticated
    * @return {status - 200} - 200, if the user is authenticated, post user's post to the API.
    */
-   function CheckIfUserIsAuthenticated() {
+  function CheckIfUserIsAuthenticated() {
     if (identifyuserAuthStatus) {
       FetchRequiredInfoFromUserReq();
       posts.push(req.body);
@@ -293,7 +296,8 @@ app.post("/post", (req, res) => {
     }
   }
   function FetchRequiredInfoFromUserReq() {
-    req.body.created = combineDateToReasonableData;
+    DateFunction();
+    req.body.created = FullDate;
     req.body.username = identifyuserAuthStatus.username;
     req.body.publicID = identifyuserAuthStatus.publicID;
     req.body.profile_image = identifyuserAuthStatus.profile_image;
@@ -346,6 +350,7 @@ app.route("/upload").post((req, res) => {
   );
   CheckIfAPIKeyIsValid(apikey, identifyuserAuthStatus, req, res);
 });
+
 function CheckIfAPIKeyIsValid(apikey, identifyuserAuthStatus, req, res) {
   if (apikey === key) {
     CheckIfUserIsAuthenticated(identifyuserAuthStatus, req, res);
@@ -355,7 +360,7 @@ function CheckIfAPIKeyIsValid(apikey, identifyuserAuthStatus, req, res) {
 }
 async function CheckIfUserIsAuthenticated(identifyuserAuthStatus, req, res) {
   if (identifyuserAuthStatus) {
-    CheckFileTypeRequirement(req, res);
+    CheckFileTypeRequirement(req, res, identifyuserAuthStatus);
   } else {
     res.status(401).send({
       error:
@@ -363,47 +368,38 @@ async function CheckIfUserIsAuthenticated(identifyuserAuthStatus, req, res) {
     });
   }
 }
-async function CheckFileTypeRequirement(req, res) {
+async function CheckFileTypeRequirement(req, res, identifyuserAuthStatus) {
   const filetype = req.body.files.fileType;
-  try {
-    if (
-      filetype === "image/jpeg" ||
-      filetype === "image/png" ||
-      filetype === "image/gif" ||
-      filetype === "image/jfif" ||
-      filetype === "image/jpg" ||
-      filetype === "video/mp4"
-    ) {
-      CheckFileSizeRequirement(req, res);
-    } else {
-      console.log("Failed to upload file: ");
-      res.send({ error: "Failed to upload file" });
-    }
-  } catch (error) {
-    res.status(412).send({
-      error,
-    });
+  if (
+    filetype === "image/jpeg" ||
+    filetype === "image/png" ||
+    filetype === "image/gif" ||
+    filetype === "image/jfif" ||
+    filetype === "image/jpg" ||
+    filetype === "video/mp4"
+  ) {
+    CheckFileSizeRequirement(req, res, identifyuserAuthStatus);
+  } else {
+    console.log("Failed to upload file: ");
+    res.send({ error: "Failed to upload file" });
   }
 }
-function CheckFileSizeRequirement(req, res) {
+function CheckFileSizeRequirement(req, res, identifyuserAuthStatus) {
   const fileSizeLimit = 98103;
   const userUploadFileSize = req.body.files.fileSize;
-  try {
-    if (userUploadFileSize > fileSizeLimit) {
-      throw new Error("File size limit exceeded");
-    } else {
-      UploadFilesToDatabase(req, res);
-    }
-  } catch (error) {
+  if (userUploadFileSize > fileSizeLimit) {
     res
       .status(413)
       .send({ error: "Your file is too large for the server to handle" });
+  } else {
+    UploadFilesToDatabase(req, res, identifyuserAuthStatus);
   }
 }
-function UploadFilesToDatabase(req, res) {
+function UploadFilesToDatabase(req, res, identifyuserAuthStatus) {
+  DateFunction();
   req.body.files.username = identifyuserAuthStatus.username;
-  req.body.files.created = combineDateToReasonableData;
-  console.log("File upload completed");
+  req.body.files.profile_image = identifyuserAuthStatus.profile_image;
+  req.body.files.created = FullDate;
   upload_database.push(req.body.files);
   res.send({ message: "Your File has been Uploaded Succesfully" });
 }
@@ -423,7 +419,7 @@ app.route("/profile/:publicID").get((req, res) => {
   if (apikey === key) {
     FetchUserDataViaID(res, req);
   } else {
-    res.status(401).send({error: 'API Key is Invalid or not provided'})
+    res.status(401).send({ error: "API Key is Invalid or not provided" });
   }
 });
 function FetchUserDataViaID(res, req) {
@@ -440,9 +436,10 @@ function FetchUserDataViaID(res, req) {
   }
   function CheckIfIDIsValid() {
     if (!result) {
-      res
-        .status(404)
-        .send({ error: "Cannot fetch or change profile details, because you haven't posted anything." });
+      res.status(404).send({
+        error:
+          "Your profile isnt't available at the moment, Try recreating an account to fix this error message",
+      });
     } else {
       res.send(result);
     }
@@ -450,7 +447,8 @@ function FetchUserDataViaID(res, req) {
 }
 const trends_data = [
   {
-    thumbnail: "https://images.unsplash.com/photo-1558655146-364adaf1fcc9?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8NXx8YXBwfGVufDB8fDB8fA%3D%3D&auto=format&fit=crop&w=500&q=60",
+    thumbnail:
+      "https://images.unsplash.com/photo-1558655146-364adaf1fcc9?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8NXx8YXBwfGVufDB8fDB8fA%3D%3D&auto=format&fit=crop&w=500&q=60",
     title: "Hashtag",
     likes: "1K People Likes It",
     intrest: "1K People Intrested",
