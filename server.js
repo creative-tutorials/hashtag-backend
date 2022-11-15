@@ -445,39 +445,39 @@ function FetchUserDataViaID(res, req) {
     }
   }
 }
-const trends_data = [
+const news_blog = [
   {
     thumbnail:
       "https://images.unsplash.com/photo-1558655146-364adaf1fcc9?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8NXx8YXBwfGVufDB8fDB8fA%3D%3D&auto=format&fit=crop&w=500&q=60",
     title: "Hashtag",
     likes: "1K People Likes It",
-    intrest: "1K People Intrested",
+    read: "1K People Read This",
     _id: "0ab",
   },
 ];
 
-app.route("/trends").get((req, res) => {
-  res.send(trends_data);
+app.route("/news").get((req, res) => {
+  res.send(news_blog);
 });
 
-app.route("/add-trends").post((req, res) => {
-  AddNewTrends(res, req);
+app.route("/add-news").post((req, res) => {
+  AddData(res, req);
 });
 
-async function AddNewTrends(res, req) {
+async function AddData(res, req) {
   const apikey = req.headers.apikey;
   if (apikey === key) {
-    const trends = req.body;
+    const data = req.body;
 
     /* The above code is checking if the trends array has more than one element. If it does, it returns a
  400 error. If it doesn't, it returns a 200 success message. */
-    if (trends.length > 1) {
+    if (data.length > 1) {
       res.status(400).send({ error: "You can only add one trends at a time" });
     } else {
-      trends_data.push(trends);
+      news_blog.push(data);
       await database
         .collection("trends")
-        .insertOne(trends)
+        .insertOne(data)
         .then((result) => {
           console.log(result);
         })
@@ -485,7 +485,7 @@ async function AddNewTrends(res, req) {
           console.log(error);
         });
       res.status(200).send({
-        message: "Trend created succesffully",
+        message: "created succesffully",
         error: false,
         visibleToDatabase: true,
       });
