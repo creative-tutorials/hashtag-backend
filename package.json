@@ -11,7 +11,7 @@
   "scripts": {
     "test": "yarn test",
     "start": "node server.js",
-    "start server": "nodemon server.js"
+    "serve": "nodemon server.js"
   },
   "dependencies": {
     "axios": "^0.27.2",
